@@ -1,0 +1,79 @@
+"""Tonight's board: what goes on it, memory storage and the HTTP API."""
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+from fastapi.testclient import TestClient
+
+from app import main
+from app.board import Entry, MemoryBoard, entry_from_result, summarize
+
+
+def result(domain, code="european", hosts=None):
+    if hosts is None:
+        hosts = [{"owner": "Hetzner", "owner_country": "DE"}]
+    return {"domain": domain, "verdict": {"code": code}, "hosts": hosts}
+
+
+def at(minutes_ago):
+    return datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+
+
+def test_entry_from_result_keeps_real_domains():
+    e = entry_from_result(result("hetzner.com"))
+    assert (e.domain, e.verdict, e.owner, e.owner_country) == ("hetzner.com", "european", "Hetzner", "DE")
+
+
+def test_entry_from_result_skips_ips_and_empty_answers():
+    # An IP address could be someone's home connection.
+    assert entry_from_result(result("203.0.113.7")) is None
+    assert entry_from_result(result("2001:db8::1")) is None
+    assert entry_from_result(result("example.com", code="unknown", hosts=[])) is None
+
+
+def test_memory_board_keeps_the_latest_per_domain_newest_first():
+    board = MemoryBoard()
+
+    async def run():
+        await board.record(Entry("a.com", "european", "Hetzner", "DE", at(30)))
+        await board.record(Entry("b.com", "us_owned", "Amazon Web Services", "US", at(20)))
+        await board.record(Entry("a.com", "us_front_door", "Cloudflare", "US", at(10)))
+        return await board.recent(at(60), 10)
+
+    entries = asyncio.run(run())
+    assert [(e.domain, e.verdict) for e in entries] == [("a.com", "us_front_door"), ("b.com", "us_owned")]
+
+
+def test_memory_board_window_and_limit():
+    board = MemoryBoard()
+
+    async def run():
+        await board.record(Entry("old.com", "european", None, None, at(24 * 60)))
+        for i in range(5):
+            await board.record(Entry(f"n{i}.com", "european", None, None, at(5 - i)))
+        return await board.recent(at(60), 3)
+
+    entries = asyncio.run(run())
+    assert [e.domain for e in entries] == ["n4.com", "n3.com", "n2.com"]
+
+
+def test_summarize_counts_in_a_fixed_order():
+    entries = [Entry(f"{i}.com", code, None, None, at(1)) for i, code in enumerate(["us_owned", "european", "european"])]
+    assert list(summarize(entries).items()) == [("european", 2), ("us_owned", 1)]
+
+
+class FakeLookup:
+    async def run(self, domain):
+        return {**result(domain), "cached": False}
+
+
+def test_api_records_lookups_on_the_board():
+    main.app.state.board = MemoryBoard()
+    main.app.state.lookup = FakeLookup()
+    client = TestClient(main.app)  # no lifespan: no network, state set above
+
+    assert client.get("/api/lookup", params={"domain": "hetzner.com"}).status_code == 200
+    body = client.get("/api/board").json()
+    assert body["storage"] == "memory"
+    assert body["total"] == 1 and body["counts"] == {"european": 1}
+    assert body["entries"][0]["domain"] == "hetzner.com"

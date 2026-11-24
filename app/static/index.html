@@ -171,6 +171,29 @@
   .z-other { --z: var(--other); }
   .z-unknown { --z: var(--muted); }
 
+  /* Tonight's board */
+  .board { margin-block-start: clamp(3rem, 2rem + 4vw, 5rem); }
+  .board h2 { margin: 0 0 0.5rem; font-size: 1.2rem; line-height: 1.3; }
+  .board h2::before { content: "## " / ""; color: var(--accent); }
+  .board-sum { margin: 0 0 1rem; max-inline-size: 70ch; text-wrap: pretty; }
+  .board-sum b { color: var(--z); }
+  .board-list { list-style: none; margin: 0; padding: 0; border-block-start: 1px dashed var(--rule); }
+  .board-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 0.15rem 1rem;
+    padding-block: 0.55rem;
+    border-block-end: 1px dashed var(--rule);
+  }
+  .board-list a { overflow-wrap: anywhere; }
+  .board-list .v { color: var(--z); font-weight: 700; }
+  .board-list .o { color: var(--muted); overflow-wrap: anywhere; }
+  .board-meta { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.9rem; }
+  @media (width < 40em) {
+    .board-list li { grid-template-columns: minmax(0, 1fr) auto; }
+    .board-list .o { grid-column: 1 / -1; }
+  }
+
   .how { margin-block-start: clamp(3rem, 2rem + 4vw, 5rem); max-inline-size: 70ch; }
   .how h2 { margin: 0 0 0.75rem; font-size: 1.2rem; line-height: 1.3; }
   .how h2::before { content: "## " / ""; color: var(--accent); }
@@ -215,6 +238,13 @@
 
   <div id="status" class="sr-only" aria-live="polite"></div>
   <section id="out" aria-label="Result"></section>
+
+  <section class="board" id="board" aria-labelledby="board-title" hidden>
+    <h2 id="board-title">Tonight's board</h2>
+    <p class="board-sum" id="board-sum"></p>
+    <ol class="board-list" id="board-list"></ol>
+    <p class="board-meta" id="board-meta"></p>
+  </section>
 
   <section class="how" aria-labelledby="how-title">
     <h2 id="how-title">How it works</h2>
@@ -408,6 +438,7 @@
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `Something went wrong (${res.status}).`);
       render(body);
+      loadBoard();
     } catch (e) {
       out.replaceChildren();
       showError(e.message || "Something went wrong.");
@@ -434,8 +465,72 @@
     const d = new URLSearchParams(location.search).get("d");
     if (d) check(d, false); else { out.replaceChildren(); input.value = ""; }
   });
+  // Tonight's board: what everyone has checked, refreshed while the page is visible.
+  const board = document.getElementById("board");
+  const boardSum = document.getElementById("board-sum");
+  const boardList = document.getElementById("board-list");
+  const boardMeta = document.getElementById("board-meta");
+  const SHORT = {
+    european: "European",
+    us_front_door: "US front door",
+    us_owned: "US-owned",
+    non_european: "Outside Europe",
+    unknown: "Unknown",
+  };
+  const VERDICT_ZONE = { european: "z-eu", us_front_door: "z-front", us_owned: "z-us", non_european: "z-other", unknown: "z-unknown" };
+  const PHRASE = {
+    european: "European",
+    us_front_door: "behind a US front door",
+    us_owned: "US-owned",
+    non_european: "owned outside Europe",
+    unknown: "unknown",
+  };
+
+  function renderBoard(b) {
+    const hours = Number.isInteger(b.window_hours) ? b.window_hours : b.window_hours.toFixed(1);
+    if (!b.total) {
+      boardSum.replaceChildren(`Nothing checked in the last ${hours} hours. Be the first.`);
+    } else {
+      const parts = Object.entries(b.counts).map(([code, n]) =>
+        h("span", { class: VERDICT_ZONE[code] || "z-unknown" }, h("b", {}, n), ` ${PHRASE[code] || code}`));
+      const list = parts.flatMap((p, i) => (i === 0 ? [p] : [i === parts.length - 1 ? " and " : ", ", p]));
+      boardSum.replaceChildren(
+        `${b.total} ${b.total === 1 ? "domain" : "domains"} checked in the last ${hours} hours: `, ...list, ".");
+    }
+    boardList.replaceChildren(...b.entries.map(e => h("li", { class: VERDICT_ZONE[e.verdict] || "z-unknown" },
+      h("a", { href: `/?d=${encodeURIComponent(e.domain)}` }, e.domain),
+      h("span", { class: "v" }, SHORT[e.verdict] || e.verdict),
+      h("span", { class: "o" }, e.owner ? `${e.owner}${e.owner_country ? `, ${country(e.owner_country)}` : ""}` : ""),
+    )));
+    const where = b.storage === "postgres"
+      ? "Stored in Postgres, shared by every copy of this app."
+      : "Stored in memory on this server, so it starts over on restart.";
+    boardMeta.textContent = `Every domain checked here lands on this list. ${where}${b.note ? ` ${b.note}` : ""}`;
+    board.hidden = false;
+  }
+
+  async function loadBoard() {
+    try {
+      const res = await fetch("/api/board");
+      if (!res.ok) throw new Error(String(res.status));
+      renderBoard(await res.json());
+    } catch {
+      board.hidden = true;
+    }
+  }
+
+  boardList.addEventListener("click", e => {
+    const a = e.target.closest("a");
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    window.scrollTo({ top: 0 });
+    check(a.textContent, true);
+  });
+  setInterval(() => { if (document.visibilityState === "visible") loadBoard(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadBoard(); });
+
   const initial = new URLSearchParams(location.search).get("d");
-  if (initial) check(initial, false); else input.focus();
+  if (initial) check(initial, false); else { input.focus(); loadBoard(); }
 })();
 </script>
 </body>

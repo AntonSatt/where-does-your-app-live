@@ -53,20 +53,57 @@ python3 -m venv .venv
 ```
 
 The app is a plain ASGI app (`app.main:app`) that listens on `$PORT`
-(default 8000), needs no secrets and no database, and answers
-`GET /healthz` for health checks. It makes outbound HTTPS calls to
+(default 8000), needs no secrets, and answers `GET /healthz` for health
+checks. Postgres is optional (see below). It makes outbound HTTPS calls to
 stat.ripe.net, ip-ranges.amazonaws.com and www.gstatic.com, and DNS lookups.
+
+## Tonight's board
+
+Every domain someone checks lands on a shared list with its verdict, so a
+room full of people can see where all their apps live. IP addresses never go
+on the board (one could be someone's home connection), and neither do names
+without public servers.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `DATABASE_URL` | unset | Postgres connection string. Unset means the board lives in memory: each replica keeps its own list and a restart empties it. |
+| `BOARD_WINDOW_HOURS` | `12` | How far back the board looks. |
+
+With `DATABASE_URL` set, the app creates its one table at startup. The same
+step runs on its own as a migration, for platforms that run one before the
+app starts:
+
+```bash
+python -m app.migrate
+```
+
+Every lookup is kept; the board shows the latest one per domain. If Postgres
+is unreachable at startup the app retries for a while, then falls back to
+memory and says so on the page, so lookups keep working either way.
+
+To try it locally with Postgres:
+
+```bash
+docker run -d --rm --name wdyal-pg -p 127.0.0.1:55432:5432 \
+    -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine
+DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres .venv/bin/python -m app
+```
 
 ## API
 
 ```bash
 curl "http://localhost:8000/api/lookup?domain=example.com"
+curl "http://localhost:8000/api/board"
 ```
 
-Takes a domain, a URL or an IP address. Returns the verdict, the CNAME chain,
-the platforms recognised in it and one entry per address with owner, ASN,
-country and region. Results are cached for five minutes, RIPEstat answers for
-hours. Interactive docs at `/api/docs`.
+`/api/lookup` takes a domain, a URL or an IP address. It returns the verdict,
+the CNAME chain, the platforms recognised in it and one entry per address with
+owner, ASN, country and region. Results are cached for five minutes, RIPEstat
+answers for hours.
+
+`/api/board` returns the latest verdict per domain checked within the window,
+the count per verdict, and where the board is stored (`postgres` or
+`memory`). Interactive docs at `/api/docs`.
 
 ## Tests
 
@@ -75,12 +112,16 @@ hours. Interactive docs at `/api/docs`.
 .venv/bin/python scripts/check_owners.py # verify the owner table against RIPEstat
 ```
 
+The Postgres test runs when `TEST_DATABASE_URL` points at a database, for
+example the container above. It works in a throwaway schema and drops it
+afterwards.
+
 ## Roadmap
 
 - **Deep scan:** fetch the page and check every third-party host it loads
   (fonts, analytics, scripts, CDNs). A "European" site often pulls half of
   itself from the US. This runs as a background job: a queue, workers that
-  scale out, and Postgres for the results. Fetching user-supplied URLs needs
+  scale out, and the results next to the board in Postgres. Fetching user-supplied URLs needs
   an SSRF guard first (public addresses only, no redirects into private
   ranges, size and time limits).
 - **Shared cache:** Redis behind the same interface as the in-process cache,

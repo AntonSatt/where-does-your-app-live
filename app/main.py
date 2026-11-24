@@ -11,6 +11,7 @@ import httpx
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
 
+from .board import COUNTED, SHOWN, WINDOW_HOURS, entry_from_result, open_board, summarize, window_start
 from .cache import TTLCache
 from .cloud import CloudRanges
 from .lookup import DnsError, InputError, Lookup, NotFound
@@ -20,6 +21,7 @@ STATIC = Path(__file__).parent / "static"
 REQUEST_TIMEOUT = 25
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -28,11 +30,13 @@ async def lifespan(app: FastAPI):
     cache = TTLCache()
     cloud = CloudRanges(client)
     app.state.lookup = Lookup(RipeStat(client, cache), cloud, cache)
+    app.state.board = await open_board()
     preload = asyncio.create_task(cloud.refresh())
     try:
         yield
     finally:
         preload.cancel()
+        await app.state.board.close()
         await client.aclose()
 
 
@@ -46,7 +50,7 @@ def _error(status: int, message: str) -> JSONResponse:
 @app.get("/api/lookup")
 async def lookup(domain: str = Query(..., max_length=2048, description="Domain, URL or IP address")):
     try:
-        return await asyncio.wait_for(app.state.lookup.run(domain), REQUEST_TIMEOUT)
+        result = await asyncio.wait_for(app.state.lookup.run(domain), REQUEST_TIMEOUT)
     except InputError as e:
         return _error(400, str(e))
     except NotFound:
@@ -57,6 +61,33 @@ async def lookup(domain: str = Query(..., max_length=2048, description="Domain, 
         return _error(502, "The network registry (RIPEstat) isn't answering right now. Try again in a moment.")
     except TimeoutError:
         return _error(504, "That took too long. Try again in a moment.")
+
+    entry = entry_from_result(result)
+    if entry:
+        try:
+            await app.state.board.record(entry)
+        except Exception:  # noqa: BLE001 - the board is a bonus; the answer still goes out
+            log.exception("could not record %s on the board", entry.domain)
+    return result
+
+
+@app.get("/api/board")
+async def board():
+    """The domains checked in the last BOARD_WINDOW_HOURS hours, newest first."""
+    store = app.state.board
+    try:
+        entries = await store.recent(window_start(), COUNTED)
+    except Exception:  # noqa: BLE001
+        log.exception("could not read the board")
+        return _error(503, "The board isn't available right now.")
+    return {
+        "storage": store.storage,
+        "note": store.note,
+        "window_hours": WINDOW_HOURS,
+        "total": len(entries),
+        "counts": summarize(entries),
+        "entries": [e.to_json() for e in entries[:SHOWN]],
+    }
 
 
 @app.get("/healthz")
