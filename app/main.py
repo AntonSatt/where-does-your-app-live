@@ -11,7 +11,17 @@ import httpx
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
 
-from .board import COUNTED, SHOWN, WINDOW_HOURS, entry_from_result, open_board, summarize, window_start
+from .board import (
+    COUNTED,
+    SHOWN,
+    WINDOW_HOURS,
+    configured_dsn,
+    connect_later,
+    entry_from_result,
+    open_board,
+    summarize,
+    window_start,
+)
 from .cache import TTLCache
 from .cloud import CloudRanges
 from .lookup import DnsError, InputError, Lookup, NotFound
@@ -30,12 +40,18 @@ async def lifespan(app: FastAPI):
     cache = TTLCache()
     cloud = CloudRanges(client)
     app.state.lookup = Lookup(RipeStat(client, cache), cloud, cache)
-    app.state.board = await open_board()
-    preload = asyncio.create_task(cloud.refresh())
+    dsn = configured_dsn()
+    app.state.board = await open_board(dsn)
+    tasks = [asyncio.create_task(cloud.refresh())]
+    if dsn is not None and app.state.board.storage == "memory":
+        # The database often starts after the app on Kubernetes; switch over when it answers.
+        tasks.append(asyncio.create_task(
+            connect_later(dsn, app.state.board, lambda board: setattr(app.state, "board", board))))
     try:
         yield
     finally:
-        preload.cancel()
+        for task in tasks:
+            task.cancel()
         await app.state.board.close()
         await client.aclose()
 

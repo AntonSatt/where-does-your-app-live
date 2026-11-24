@@ -6,7 +6,30 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from app import main
-from app.board import Entry, MemoryBoard, configured_dsn, entry_from_result, summarize
+from app.board import Entry, MemoryBoard, configured_dsn, connect_later, entry_from_result, summarize
+
+
+def test_connect_later_moves_the_board_once_postgres_answers():
+    fallback = MemoryBoard()
+    target = MemoryBoard()  # stands in for Postgres
+    attempts = []
+    installed = []
+
+    async def connect(dsn):
+        attempts.append(dsn)
+        if len(attempts) < 3:
+            raise ConnectionRefusedError
+        return target
+
+    async def run():
+        await fallback.record(Entry("a.com", "european", "Hetzner", "DE", at(2)))
+        await fallback.record(Entry("b.com", "us_owned", "Amazon Web Services", "US", at(1)))
+        await connect_later("postgresql://db/app", fallback, installed.append, connect=connect, delay=0)
+        return await target.recent(at(60), 10)
+
+    entries = asyncio.run(run())
+    assert len(attempts) == 3 and installed == [target]
+    assert [e.domain for e in entries] == ["b.com", "a.com"]  # carried over, order kept
 
 
 def test_configured_dsn(monkeypatch):

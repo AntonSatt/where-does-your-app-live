@@ -134,6 +134,9 @@ class MemoryBoard:
         newest_first = [e for e in reversed(self._items.values()) if e.at >= since]
         return newest_first[:limit]
 
+    def oldest_first(self) -> list[Entry]:
+        return list(self._items.values())
+
     async def close(self) -> None:
         pass
 
@@ -204,5 +207,28 @@ async def open_board(dsn: str | None = None, attempts: int = 5) -> MemoryBoard |
             log.warning("Postgres not reachable (attempt %d of %d): %s", attempt, attempts, type(e).__name__)
             if attempt < attempts:
                 await asyncio.sleep(min(2 * attempt, 8))
-    log.error("could not reach Postgres, falling back to memory for tonight's board")
-    return MemoryBoard(note="Postgres was configured but unreachable at startup.")
+    log.error("could not reach Postgres yet, tonight's board starts in memory")
+    return MemoryBoard(note=WAITING_NOTE)
+
+
+WAITING_NOTE = "Postgres isn't answering yet. Lookups are kept in memory and move over when it does."
+RETRY_SECONDS = 10
+
+
+async def connect_later(dsn: str, fallback: MemoryBoard, install, connect=None, delay: float = RETRY_SECONDS) -> None:
+    """Keep trying Postgres in the background, for a database that starts
+    after the app. Once it answers, copy over what the memory board holds and
+    hand the new board to install()."""
+    connect = connect or PostgresBoard.connect
+    while True:
+        await asyncio.sleep(delay)
+        try:
+            board = await connect(dsn)
+        except Exception as e:  # noqa: BLE001 - still starting; try again
+            log.info("Postgres still not reachable: %s", type(e).__name__)
+            continue
+        for entry in fallback.oldest_first():
+            await board.record(entry)
+        install(board)
+        log.info("Postgres answered, tonight's board now lives there")
+        return
