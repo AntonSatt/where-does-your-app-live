@@ -1,31 +1,28 @@
 <!doctype html>
-<html lang="en" data-design="klar">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="text-scale" content="scale">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <title>Where does your app live?</title>
 <meta name="description" content="Type a domain. See who owns the servers behind it, and whether it is really European.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23121417' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23121417'/%3E%3C/svg%3E">
-<script>
-  // Design trial: pick a design before first paint. ?design=name wins, then the last choice.
-  (() => {
-    const all = ["klar", "terminal", "tidning", "utdrag", "affisch"];
-    let d = new URLSearchParams(location.search).get("design");
-    try { d = d || localStorage.getItem("design"); } catch {}
-    document.documentElement.dataset.design = all.includes(d) ? d : "klar";
-  })();
-</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23ffb454' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23ffb454'/%3E%3C/svg%3E">
 <style>
-  /* ---------- Shared structure. Each design below only sets tokens and its own touches. ---------- */
+  /* Terminal: all monospace, like reading the output of dig and traceroute. */
   :root {
+    color-scheme: dark;
+    --bg: #0f130f;
+    --ink: #dfe9da;
+    --muted: #a3b59f;
+    --rule: #304030;
+    --accent: #ffb454;
+    --accent-ink: #0f130f;
+    --eu: #7ee08f;
+    --us: #ff8478;
+    --front: #f5cd62;
+    --other: #9cc4ff;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
-    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
-    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", P052, "Book Antiqua", Georgia, serif;
-    --font-text: var(--sans);
-    --font-display: var(--sans);
-    --font-data: var(--mono);
     accent-color: var(--accent);
   }
   * { box-sizing: border-box; }
@@ -33,14 +30,14 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: var(--font-text);
-    font-size: var(--text-size, 1.0625rem);
-    line-height: 1.55;
+    font-family: var(--mono);
+    font-size: 1rem;
+    line-height: 1.6;
   }
-  ::selection { background: var(--ink); color: var(--bg); }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
   a { color: inherit; text-decoration-thickness: 0.07em; text-underline-offset: 0.2em; }
-  a:hover { text-decoration-thickness: 0.14em; }
-  code { font-family: var(--font-data); font-size: 0.9em; overflow-wrap: anywhere; }
+  a:hover { color: var(--accent); }
+  code { font-family: inherit; overflow-wrap: anywhere; }
   .sr-only {
     position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0;
     overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
@@ -49,33 +46,29 @@
   main {
     max-inline-size: 60rem;
     margin-inline: auto;
-    padding: clamp(2rem, 1rem + 5vw, 6rem) clamp(1rem, 0.5rem + 4vw, 3rem) 7rem;
+    padding: clamp(2rem, 1rem + 5vw, 6rem) clamp(1rem, 0.5rem + 4vw, 3rem) 4rem;
   }
 
-  /* The question is the form: "Where does ____ live?" */
+  /* The question is the form: "$ Where does ____ live?" */
   .ask {
     margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--ask-size, clamp(2rem, 1.4rem + 2.6vw, 3.75rem));
-    font-weight: var(--ask-weight, 700);
-    line-height: 1.1;
-    letter-spacing: var(--ask-tracking, -0.02em);
+    font-size: clamp(1.6rem, 1.15rem + 2vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    column-gap: 0.25em;
+    column-gap: 0.4em;
   }
+  .ask::before { content: "$" / ""; color: var(--accent); }
   .ask input {
     font: inherit;
-    font-family: var(--font-data);
-    font-size: 0.78em;
-    font-weight: 500;
-    letter-spacing: -0.03em;
     color: var(--ink);
     caret-color: var(--accent);
     background: transparent;
     border: 0;
-    border-block-end: 0.07em solid var(--accent);
+    border-block-end: 0.07em dashed var(--accent);
     border-radius: 0;
     padding: 0 0.08em 0.02em;
     field-sizing: content;
@@ -84,17 +77,9 @@
     max-inline-size: 100%;
   }
   @supports not (field-sizing: content) {
-    .ask input { inline-size: min(12ch, 100%); }
+    .ask input { inline-size: min(14ch, 100%); }
   }
-  .ask input::placeholder {
-    font-family: var(--font-display);
-    font-size: 1.28em;
-    font-weight: var(--ask-weight, 700);
-    font-style: var(--placeholder-style, normal);
-    letter-spacing: var(--ask-tracking, -0.02em);
-    color: var(--muted);
-    opacity: 1;
-  }
+  .ask input::placeholder { color: var(--muted); opacity: 1; }
   .ask input:focus { outline: none; }
   .ask input:focus-visible { background: color-mix(in oklab, var(--accent) 14%, transparent); }
   .ask input[aria-invalid="true"] { border-block-end-color: var(--us); }
@@ -107,55 +92,44 @@
     margin-block-start: clamp(1.25rem, 1rem + 1.5vw, 2.25rem);
   }
   .go {
-    font: 650 1rem/1 var(--font-text);
-    padding: 0.85em 1.3em;
-    background: var(--accent);
-    color: var(--accent-ink);
-    border: 0;
-    border-radius: var(--radius, 0);
+    font: 700 1rem/1 var(--mono);
+    padding: 0.8em 1.2em;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 0;
     cursor: pointer;
   }
-  .go:hover { background: color-mix(in oklab, var(--accent) 85%, var(--bg)); }
-  .go:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .go:hover { background: var(--accent); color: var(--accent-ink); }
+  .go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .go:disabled { cursor: progress; opacity: 0.7; }
   .hint { margin: 0; color: var(--muted); text-wrap: pretty; }
-  .hint a { color: var(--ink); font-family: var(--font-data); font-size: 0.92em; }
-  .error { margin: 1rem 0 0; color: var(--us); font-family: var(--font-data); font-weight: 600; }
+  .hint a { color: var(--ink); }
+  .error { margin: 1rem 0 0; color: var(--us); font-weight: 700; }
 
   /* The answer */
   .result {
     margin-block-start: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
     padding-block-start: 2rem;
-    border-block-start: 1px solid var(--rule);
+    border-block-start: 1px dashed var(--rule);
   }
   .answer {
     margin: 0;
-    max-inline-size: 28ch;
-    font-family: var(--font-display);
-    font-size: var(--answer-size, clamp(1.6rem, 1.2rem + 1.6vw, 2.5rem));
-    font-weight: var(--answer-weight, 700);
-    line-height: 1.15;
-    letter-spacing: -0.015em;
+    max-inline-size: 32ch;
+    font-size: clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
-  .answer code { font-size: 0.82em; font-weight: 500; letter-spacing: -0.03em; }
-  .answer em { font-style: var(--em-style, normal); color: var(--z); }
-  .stamp {
-    margin: 1rem 0 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55em;
-    font-family: var(--font-data);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--z);
-  }
-  .stamp::before { content: ""; inline-size: 0.8em; block-size: 0.8em; background: currentColor; flex: none; }
-  .detail { margin: 1.1rem 0 0; max-inline-size: 64ch; text-wrap: pretty; }
-  .notes { margin: 0.75rem 0 0; padding: 0; list-style: none; max-inline-size: 64ch; color: var(--muted); font-size: 0.95rem; }
+  .answer em { font-style: normal; color: var(--z); }
+  .stamp { margin: 1rem 0 0; font-weight: 700; color: var(--z); }
+  .stamp::before { content: "# " / ""; }
+  .detail { margin: 1.1rem 0 0; max-inline-size: 70ch; text-wrap: pretty; }
+  .notes { margin: 0.75rem 0 0; padding: 0; list-style: none; max-inline-size: 70ch; color: var(--muted); }
   .notes li + li { margin-block-start: 0.35rem; }
 
-  /* The route from the name to the server */
+  /* The route from the name to the server, numbered like traceroute hops */
   .route {
     list-style: none;
     margin: 2.5rem 0 0;
@@ -163,10 +137,12 @@
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     column-gap: 1.25rem;
+    counter-reset: hop;
   }
-  .route > li { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
-  .step { font-family: var(--font-data); font-size: 0.875rem; color: var(--muted); text-align: end; padding-block-start: 0.2rem; }
-  .hop { position: relative; min-inline-size: 0; padding: 0 0 1.75rem 1.5rem; border-inline-start: 2px solid var(--rule); }
+  .route > li { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; counter-increment: hop; }
+  .step { color: var(--muted); text-align: end; text-transform: lowercase; }
+  .step::before { content: counter(hop) "  " / ""; color: var(--accent); }
+  .hop { position: relative; min-inline-size: 0; padding: 0 0 1.75rem 1.5rem; border-inline-start: 2px dotted var(--rule); }
   .route > li:last-child .hop { border-inline-start-color: transparent; padding-block-end: 0; }
   .hop::before {
     content: "";
@@ -175,21 +151,20 @@
     inset-block-start: 0.4rem;
     inline-size: 0.85rem;
     block-size: 0.85rem;
-    border-radius: 50%;
     background: var(--bg);
     border: 2px solid var(--z, var(--muted));
   }
   .hop.known::before { background: var(--z, var(--muted)); }
   .hop p { margin: 0; text-wrap: pretty; }
   .hop p + p { margin-block-start: 0.3rem; }
-  .hop .data { font-family: var(--font-data); font-size: 0.9rem; color: var(--muted); overflow-wrap: anywhere; }
-  .hop .alias { font-family: var(--font-data); font-size: 0.92rem; overflow-wrap: anywhere; }
+  .hop .data { color: var(--muted); overflow-wrap: anywhere; }
+  .hop .alias { overflow-wrap: anywhere; }
   .hop .alias span { color: var(--muted); }
   .owner + .owner { margin-block-start: 1rem; }
   details { margin-block-start: 0.4rem; }
-  summary { font-family: var(--font-data); font-size: 0.9rem; color: var(--muted); cursor: pointer; inline-size: fit-content; }
-  .ips { list-style: none; margin: 0.35rem 0 0; padding: 0; font-family: var(--font-data); font-size: 0.9rem; overflow-wrap: anywhere; }
-  .meta { margin: 2rem 0 0; font-family: var(--font-data); font-size: 0.85rem; color: var(--muted); }
+  summary { color: var(--muted); cursor: pointer; inline-size: fit-content; }
+  .ips { list-style: none; margin: 0.35rem 0 0; padding: 0; overflow-wrap: anywhere; }
+  .meta { margin: 2rem 0 0; color: var(--muted); }
 
   .z-eu { --z: var(--eu); }
   .z-us { --z: var(--us); }
@@ -197,259 +172,26 @@
   .z-other { --z: var(--other); }
   .z-unknown { --z: var(--muted); }
 
-  .how { margin-block-start: clamp(3rem, 2rem + 4vw, 5rem); max-inline-size: 64ch; }
-  .how h2 { margin: 0 0 0.75rem; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2; }
-  .how ol { margin: 0; padding-inline-start: 1.4rem; }
+  .how { margin-block-start: clamp(3rem, 2rem + 4vw, 5rem); max-inline-size: 70ch; }
+  .how h2 { margin: 0 0 0.75rem; font-size: 1.2rem; line-height: 1.3; }
+  .how h2::before { content: "## " / ""; color: var(--accent); }
+  .how ol { margin: 0; padding-inline-start: 1.6rem; }
   .how li { padding-inline-start: 0.25rem; text-wrap: pretty; }
   .how li + li { margin-block-start: 0.65rem; }
-  .how li::marker { color: var(--muted); font-family: var(--font-data); }
+  .how li::marker { color: var(--accent); }
 
   footer {
     margin-block-start: clamp(2.5rem, 2rem + 3vw, 4rem);
     padding-block-start: 1.25rem;
-    border-block-start: 1px solid var(--rule);
+    border-block-start: 1px dashed var(--rule);
     color: var(--muted);
-    font-size: 0.95rem;
   }
-  footer p { margin: 0 0 0.6rem; max-inline-size: 64ch; text-wrap: pretty; }
+  footer p { margin: 0 0 0.6rem; max-inline-size: 70ch; text-wrap: pretty; }
 
   @media (prefers-reduced-motion: no-preference) {
     .reveal { transition: opacity 0.45s ease, translate 0.45s ease; transition-delay: calc(var(--i, 0) * 70ms); }
     @starting-style { .reveal { opacity: 0; translate: 0 0.4rem; } }
   }
-
-  /* ---------- 1. Klar: clean sans, black and white, follows light and dark ---------- */
-  :root[data-design="klar"] {
-    color-scheme: light dark;
-    --bg: light-dark(#ffffff, #121417);
-    --ink: light-dark(#121417, #eef0f3);
-    --muted: light-dark(#4b5260, #b3bac6);
-    --rule: light-dark(#dfe2e7, #2d323a);
-    --accent: var(--ink);
-    --accent-ink: var(--bg);
-    --eu: light-dark(#127a3e, #6fdc9a);
-    --us: light-dark(#b4271a, #ff8f80);
-    --front: light-dark(#8a5300, #f3c15c);
-    --other: light-dark(#3b5a8c, #a9c1ea);
-    --radius: 0.5rem;
-  }
-
-  /* ---------- 2. Terminal: all monospace, like reading dig and traceroute ---------- */
-  :root[data-design="terminal"] {
-    color-scheme: dark;
-    --bg: #0f130f;
-    --ink: #dfe9da;
-    --muted: #a3b59f;
-    --rule: #304030;
-    --accent: #ffb454;
-    --accent-ink: #0f130f;
-    --eu: #7ee08f;
-    --us: #ff8478;
-    --front: #f5cd62;
-    --other: #9cc4ff;
-    --font-text: var(--mono);
-    --font-display: var(--mono);
-    --text-size: 1rem;
-    --ask-size: clamp(1.6rem, 1.15rem + 2vw, 2.75rem);
-    --ask-tracking: -0.03em;
-    --answer-size: clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
-  }
-  [data-design="terminal"] body { line-height: 1.6; }
-  [data-design="terminal"] .ask::before { content: "$" / ""; color: var(--accent); }
-  [data-design="terminal"] .ask input { font-size: 1em; border-block-end-style: dashed; }
-  [data-design="terminal"] .ask input::placeholder { font-size: 1em; }
-  [data-design="terminal"] .go { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-  [data-design="terminal"] .go:hover { background: var(--accent); color: var(--accent-ink); }
-  [data-design="terminal"] .result { border-block-start-style: dashed; }
-  [data-design="terminal"] .stamp::before { content: "#" / ""; inline-size: auto; block-size: auto; background: none; }
-  [data-design="terminal"] .route { counter-reset: hop; }
-  [data-design="terminal"] .route > li { counter-increment: hop; }
-  [data-design="terminal"] .step { text-transform: lowercase; }
-  [data-design="terminal"] .step::before { content: counter(hop) "  " / ""; color: var(--accent); }
-  [data-design="terminal"] .hop { border-inline-start-style: dotted; }
-  [data-design="terminal"] .hop::before { border-radius: 0; }
-
-  /* ---------- 3. Tidning: big serif question, sans for reading, follows light and dark ---------- */
-  :root[data-design="tidning"] {
-    color-scheme: light dark;
-    --bg: light-dark(#faf7f0, #161512);
-    --ink: light-dark(#1a1714, #f0ebe1);
-    --muted: light-dark(#4d473f, #c6bfb1);
-    --rule: light-dark(#d9d0bf, #3a362d);
-    --accent: var(--ink);
-    --accent-ink: var(--bg);
-    --eu: light-dark(#1b6a40, #86d3a5);
-    --us: light-dark(#a8321a, #ff9b7b);
-    --front: light-dark(#7a5000, #e9b650);
-    --other: light-dark(#3a5582, #a3badf);
-    --font-display: var(--serif);
-    --ask-size: clamp(2.25rem, 1.4rem + 3.6vw, 5rem);
-    --ask-weight: 400;
-    --ask-tracking: -0.015em;
-    --answer-weight: 400;
-    --answer-size: clamp(1.75rem, 1.25rem + 2vw, 3rem);
-    --em-style: italic;
-    --placeholder-style: italic;
-    --text-size: 1.0625rem;
-  }
-
-  /* ---------- 4. Utdrag: an official register extract on a sheet of paper ---------- */
-  :root[data-design="utdrag"] {
-    color-scheme: light;
-    --bg: #e6e8eb;
-    --sheet: #ffffff;
-    --ink: #16191d;
-    --muted: #4a515b;
-    --rule: #cbd0d6;
-    --accent: #16191d;
-    --accent-ink: #ffffff;
-    --eu: #126b38;
-    --us: #b0241a;
-    --front: #8a5200;
-    --other: #2f4f80;
-    --ask-size: clamp(1.6rem, 1.25rem + 1.6vw, 2.5rem);
-    --ask-weight: 650;
-    --answer-size: clamp(1.4rem, 1.15rem + 1vw, 1.9rem);
-    --radius: 0.2rem;
-  }
-  [data-design="utdrag"] main {
-    max-inline-size: 52rem;
-    margin-block: clamp(0.75rem, 3vw, 3rem) 6rem;
-    padding: clamp(1.25rem, 0.75rem + 3vw, 3.5rem);
-    background: var(--sheet);
-    border: 1px solid var(--rule);
-    box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.45);
-  }
-  [data-design="utdrag"] main::before {
-    content: "Extract from the domain residence register" / "";
-    display: block;
-    margin-block-end: 1.75rem;
-    padding-block-end: 0.75rem;
-    border-block-end: 3px double var(--ink);
-    font-family: var(--font-data);
-    font-size: 0.85rem;
-    color: var(--muted);
-  }
-  [data-design="utdrag"] .ask input { font-size: 0.85em; border-block-end-width: 0.06em; }
-  [data-design="utdrag"] .ask input::placeholder { font-size: 1.18em; }
-  [data-design="utdrag"] .result { border-block-start: 3px double var(--ink); }
-  [data-design="utdrag"] .stamp {
-    margin-block-start: 1.25rem;
-    padding: 0.35em 0.8em;
-    border: 2.5px solid currentColor;
-    border-radius: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    rotate: -2deg;
-  }
-  [data-design="utdrag"] .stamp::before { display: none; }
-  [data-design="utdrag"] .route { margin-block-start: 2rem; column-gap: 1.5rem; border-block-start: 2px solid var(--ink); }
-  [data-design="utdrag"] .route > li { border-block-end: 1px solid var(--rule); }
-  [data-design="utdrag"] .step {
-    min-inline-size: 5.5rem;
-    padding-block: 0.8rem;
-    text-align: start;
-    font-family: var(--font-text);
-    font-size: 0.95rem;
-    font-weight: 650;
-    color: var(--ink);
-  }
-  [data-design="utdrag"] .hop,
-  [data-design="utdrag"] .route > li:last-child .hop { padding: 0.8rem 0; border: 0; }
-  [data-design="utdrag"] .hop::before { display: none; }
-
-  /* ---------- 5. Affisch: a Swiss poster, built to be read from the back of the room ---------- */
-  :root[data-design="affisch"] {
-    color-scheme: light;
-    --bg: #ffffff;
-    --ink: #0a0a0a;
-    --muted: #474747;
-    --rule: #0a0a0a;
-    --accent: #d40500;
-    --accent-ink: #ffffff;
-    --eu: #0f7a3b;
-    --us: #d40500;
-    --front: #a35f00;
-    --other: #2747a8;
-    --font-text: "Helvetica Neue", Helvetica, "Nimbus Sans", Arial, var(--sans);
-    --font-display: var(--font-text);
-    --ask-size: clamp(2.5rem, 1.4rem + 5vw, 6.25rem);
-    --ask-weight: 800;
-    --ask-tracking: -0.045em;
-    --answer-size: clamp(1.9rem, 1.3rem + 2.5vw, 3.5rem);
-    --answer-weight: 800;
-  }
-  [data-design="affisch"] .ask { line-height: 0.98; }
-  [data-design="affisch"] .ask input {
-    font-family: var(--font-display);
-    font-size: 0.82em;
-    font-weight: 800;
-    letter-spacing: -0.045em;
-    color: var(--accent);
-    border-block-end-width: 0.08em;
-  }
-  [data-design="affisch"] .ask input::placeholder { font-size: 1.22em; }
-  [data-design="affisch"] .go { background: var(--ink); color: #fff; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
-  [data-design="affisch"] .go:hover { background: var(--accent); }
-  [data-design="affisch"] .result { border-block-start: 6px solid var(--ink); }
-  [data-design="affisch"] .answer { max-inline-size: 22ch; letter-spacing: -0.03em; }
-  [data-design="affisch"] .answer code { font-family: var(--font-display); font-size: 1em; font-weight: 800; letter-spacing: inherit; }
-  [data-design="affisch"] .stamp {
-    display: block;
-    inline-size: fit-content;
-    margin-block-start: 1.25rem;
-    padding: 0.45em 0.7em;
-    background: var(--z);
-    color: #fff;
-    font-family: var(--font-display);
-    font-size: clamp(1.15rem, 1rem + 0.8vw, 1.6rem);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-  }
-  [data-design="affisch"] .stamp::before { display: none; }
-  [data-design="affisch"] .route { column-gap: 1.5rem; border-block-end: 2px solid var(--ink); }
-  [data-design="affisch"] .route > li { border-block-start: 2px solid var(--ink); }
-  [data-design="affisch"] .step {
-    padding-block-start: 0.9rem;
-    text-align: start;
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
-  [data-design="affisch"] .hop,
-  [data-design="affisch"] .route > li:last-child .hop { padding: 0.9rem 0 1.1rem; border: 0; }
-  [data-design="affisch"] .hop::before { display: none; }
-  [data-design="affisch"] .how h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
-
-  /* ---------- Design switcher, only while choosing ---------- */
-  .designs {
-    position: fixed;
-    inset-block-end: 0.75rem;
-    inset-inline: 0;
-    z-index: 10;
-    margin-inline: auto;
-    inline-size: fit-content;
-    max-inline-size: calc(100% - 1.5rem);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.35rem;
-    background: #111;
-    color: #fff;
-    border-radius: 0.6rem;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
-    font: 600 0.85rem/1 system-ui, sans-serif;
-    letter-spacing: 0;
-  }
-  .designs span { padding: 0.45rem 0.5rem; color: #bbb; }
-  .designs button { font: inherit; color: inherit; background: transparent; border: 0; border-radius: 0.4rem; padding: 0.45rem 0.65rem; cursor: pointer; }
-  .designs button:hover { background: #333; }
-  .designs button[aria-pressed="true"] { background: #fff; color: #111; }
-  .designs button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -491,14 +233,6 @@
   </footer>
 </main>
 
-<nav class="designs" aria-label="Design trial">
-  <span>Design</span>
-  <button type="button" data-design="klar">1 Klar</button>
-  <button type="button" data-design="terminal">2 Terminal</button>
-  <button type="button" data-design="tidning">3 Tidning</button>
-  <button type="button" data-design="utdrag">4 Utdrag</button>
-  <button type="button" data-design="affisch">5 Affisch</button>
-</nav>
 
 <script>
 (() => {
@@ -509,15 +243,6 @@
   const out = document.getElementById("out");
   const status = document.getElementById("status");
 
-  // Design trial
-  const designButtons = [...document.querySelectorAll(".designs button")];
-  function setDesign(name) {
-    document.documentElement.dataset.design = name;
-    designButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.design === name)));
-    try { localStorage.setItem("design", name); } catch {}
-  }
-  designButtons.forEach(b => b.addEventListener("click", () => setDesign(b.dataset.design)));
-  setDesign(document.documentElement.dataset.design);
 
   const regions = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
   const country = cc => { try { return (cc && regions && regions.of(cc)) || cc || "an unknown country"; } catch { return cc; } };
