@@ -1,8 +1,9 @@
 """Tonight's board: every domain checked recently, with its verdict.
 
-With DATABASE_URL set, the board lives in Postgres and every replica shares
-it. Without it, the board lives in memory: fine on a laptop, but each replica
-keeps its own list and a restart empties it.
+With DATABASE_URL (or the standard PG* variables) set, the board lives in
+Postgres and every replica shares it. Without them, the board lives in
+memory: fine on a laptop, but each replica keeps its own list and a restart
+empties it.
 """
 
 from __future__ import annotations
@@ -34,6 +35,32 @@ CREATE TABLE IF NOT EXISTS lookups (
 );
 CREATE INDEX IF NOT EXISTS lookups_looked_up_at_idx ON lookups (looked_up_at DESC);
 """
+
+# Any fixed number works, as long as every replica takes the same one.
+SCHEMA_LOCK = 774_201_124
+
+
+async def apply_schema(conn: asyncpg.Connection) -> None:
+    """Create the table and index. Replicas that start together take turns:
+    CREATE ... IF NOT EXISTS alone still lets two of them collide."""
+    async with conn.transaction():
+        await conn.execute("SELECT pg_advisory_xact_lock($1)", SCHEMA_LOCK)
+        await conn.execute(SCHEMA)
+
+
+def configured_dsn() -> str | None:
+    """Where Postgres is, from the environment.
+
+    DATABASE_URL wins. Without it, the standard PG* variables that a Helm
+    chart or an operator secret often provides work too; the result is then
+    "", and asyncpg reads them itself. None means no database: use memory.
+    """
+    dsn = os.environ.get("DATABASE_URL", "").strip()
+    if dsn:
+        return dsn
+    if os.environ.get("PGHOST", "").strip():
+        return ""
+    return None
 
 VERDICT_ORDER = ["european", "us_front_door", "us_owned", "non_european", "unknown"]
 
@@ -120,10 +147,12 @@ class PostgresBoard:
 
     @classmethod
     async def connect(cls, dsn: str, search_path: str | None = None) -> PostgresBoard:
+        """Connect and create the table. An empty dsn means the PG* variables."""
         settings = {"search_path": search_path} if search_path else None
-        pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=5, server_settings=settings)
+        pool = await asyncpg.create_pool(dsn or None, min_size=1, max_size=5, command_timeout=5, server_settings=settings)
         try:
-            await pool.execute(SCHEMA)
+            async with pool.acquire() as conn:
+                await apply_schema(conn)
         except BaseException:
             await pool.close()
             raise
@@ -162,9 +191,9 @@ class PostgresBoard:
 
 
 async def open_board(dsn: str | None = None, attempts: int = 5) -> MemoryBoard | PostgresBoard:
-    dsn = dsn if dsn is not None else os.environ.get("DATABASE_URL")
-    if not dsn:
-        log.info("DATABASE_URL is not set, tonight's board lives in memory")
+    dsn = dsn if dsn is not None else configured_dsn()
+    if dsn is None:
+        log.info("neither DATABASE_URL nor PGHOST is set, tonight's board lives in memory")
         return MemoryBoard()
     for attempt in range(1, attempts + 1):
         try:

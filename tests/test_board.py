@@ -6,7 +6,19 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from app import main
-from app.board import Entry, MemoryBoard, entry_from_result, summarize
+from app.board import Entry, MemoryBoard, configured_dsn, entry_from_result, summarize
+
+
+def test_configured_dsn(monkeypatch):
+    for name in ("DATABASE_URL", "PGHOST"):
+        monkeypatch.delenv(name, raising=False)
+    assert configured_dsn() is None  # nothing set: memory
+    monkeypatch.setenv("DATABASE_URL", " ")
+    assert configured_dsn() is None
+    monkeypatch.setenv("PGHOST", "db")
+    assert configured_dsn() == ""  # asyncpg reads the PG* variables itself
+    monkeypatch.setenv("DATABASE_URL", "postgresql://db/app")
+    assert configured_dsn() == "postgresql://db/app"  # DATABASE_URL wins
 
 
 def result(domain, code="european", hosts=None):

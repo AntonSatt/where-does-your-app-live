@@ -12,6 +12,7 @@ import asyncio
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 import asyncpg
 import pytest
@@ -56,3 +57,29 @@ def test_postgres_board_round_trip():
     assert [(e.domain, e.verdict) for e in entries] == [("a.com", "us_front_door"), ("b.com", "us_owned")]
     assert entries[0].owner == "Cloudflare" and entries[0].at.tzinfo is not None
     assert stored == 4  # every lookup is kept; the board shows the latest per domain
+
+
+def test_replicas_starting_together_and_pg_variables(monkeypatch):
+    """Three replicas create the table at once, all through the PG* variables."""
+    url = urlsplit(DSN)
+    for name, value in {"PGHOST": url.hostname, "PGPORT": str(url.port or 5432), "PGUSER": url.username,
+                        "PGPASSWORD": url.password, "PGDATABASE": url.path.lstrip("/")}.items():
+        if value:
+            monkeypatch.setenv(name, value)
+    schema = f"test_board_{secrets.token_hex(4)}"
+
+    async def run():
+        admin = await asyncpg.connect(DSN)
+        await admin.execute(f'CREATE SCHEMA "{schema}"')
+        try:
+            boards = await asyncio.gather(*(PostgresBoard.connect("", search_path=schema) for _ in range(3)))
+            await boards[0].record(Entry("a.com", "european", "Hetzner", "DE", at(1)))
+            seen = [len(await b.recent(at(60), 10)) for b in boards]
+            for b in boards:
+                await b.close()
+        finally:
+            await admin.execute(f'DROP SCHEMA "{schema}" CASCADE')
+            await admin.close()
+        return seen
+
+    assert asyncio.run(run()) == [1, 1, 1]  # one shared table, every replica sees the lookup

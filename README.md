@@ -67,9 +67,11 @@ without public servers.
 | Setting | Default | Meaning |
 |---|---|---|
 | `DATABASE_URL` | unset | Postgres connection string. Unset means the board lives in memory: each replica keeps its own list and a restart empties it. |
+| `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE` | unset | The standard Postgres variables, used when `DATABASE_URL` is not set and `PGHOST` is. |
 | `BOARD_WINDOW_HOURS` | `12` | How far back the board looks. |
 
-With `DATABASE_URL` set, the app creates its one table at startup. The same
+With a database configured, the app creates its one table at startup.
+Replicas that start together take turns through an advisory lock. The same
 step runs on its own as a migration, for platforms that run one before the
 app starts:
 
