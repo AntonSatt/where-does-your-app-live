@@ -9,6 +9,10 @@ and a CDN in front of your app decrypts every request on its own network.
 This app follows a domain through DNS to the networks that actually serve it
 and tells you who owns them.
 
+**Try it live:** <https://where-does-your-app-live.nf151wxjuy.01409dl07b.ankra.cc>,
+running on Kubernetes on UpCloud in Warsaw, deployed with Ankra. It is a demo
+deployment and will be taken down in December 2026.
+
 ## What it checks
 
 1. **DNS:** the CNAME chain and the public IPv4 and IPv6 addresses. The chain
