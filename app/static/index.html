@@ -103,7 +103,8 @@
   .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .go:disabled { cursor: progress; opacity: 0.7; }
   .hint { margin: 0.75rem 0 0; color: var(--muted); text-wrap: pretty; }
-  .hint a { color: var(--ink); }
+  .try { margin: 0.5rem 0 0; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; }
+  .try a { color: var(--ink); }
   .error { margin: 1rem 0 0; color: var(--us); font-weight: 700; }
 
   /* The answer */
@@ -229,10 +230,20 @@
              spellcheck="false" autocapitalize="none" required>
       <button class="go" id="go" type="submit">Look it up</button>
     </div>
-    <p class="hint" id="hint">Type a domain or paste a URL, then press Enter. Or try
-      <a href="/?d=hetzner.com">hetzner.com</a>,
-      <a href="/?d=svt.se">svt.se</a> or
-      <a href="/?d=github.com">github.com</a>.</p>
+    <p class="hint" id="hint">Type a domain or paste a URL, then press Enter.</p>
+    <p class="try"><span>Or try one:</span>
+      <a href="/?d=spotify.com">spotify.com</a>
+      <a href="/?d=svt.se">svt.se</a>
+      <a href="/?d=skatteverket.se">skatteverket.se</a>
+      <a href="/?d=klarna.com">klarna.com</a>
+      <a href="/?d=systembolaget.se">systembolaget.se</a>
+      <a href="/?d=riksdagen.se">riksdagen.se</a>
+      <a href="/?d=ikea.com">ikea.com</a>
+      <a href="/?d=hetzner.com">hetzner.com</a>
+      <a href="/?d=proton.me">proton.me</a>
+      <a href="/?d=github.com">github.com</a>
+      <a href="/?d=europa.eu">europa.eu</a>
+      <a href="/?d=platform.ankra.app">platform.ankra.app</a></p>
     <p id="err" class="error" hidden></p>
   </form>
 
@@ -456,7 +467,7 @@
   document.querySelector(".prompt").addEventListener("click", e => {
     if (e.target === e.currentTarget || e.target.classList.contains("ps1")) input.focus();
   });
-  document.querySelectorAll(".hint a").forEach(a => a.addEventListener("click", e => {
+  document.querySelectorAll(".try a").forEach(a => a.addEventListener("click", e => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     check(a.textContent, true);
