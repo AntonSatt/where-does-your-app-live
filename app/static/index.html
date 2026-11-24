@@ -22,6 +22,8 @@
     --us: #ff8478;
     --front: #f5cd62;
     --other: #9cc4ff;
+    --field: #161d16;
+    --field-line: #4f6a4c;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
     accent-color: var(--accent);
   }
@@ -49,61 +51,58 @@
     padding: clamp(2rem, 1rem + 5vw, 6rem) clamp(1rem, 0.5rem + 4vw, 3rem) 4rem;
   }
 
-  /* The question is the form: "$ Where does ____ live?" */
-  .ask {
+  .title {
     margin: 0;
     font-size: clamp(1.6rem, 1.15rem + 2vw, 2.75rem);
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  /* A real prompt box: "$ ____________ [Look it up]" */
+  .prompt {
+    margin-block-start: clamp(1.25rem, 1rem + 1.5vw, 2rem);
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 0.4em;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    background: var(--field);
+    border: 1px solid var(--field-line);
+    cursor: text;
   }
-  .ask::before { content: "$" / ""; color: var(--accent); }
-  .ask input {
+  .prompt:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .prompt:has(input[aria-invalid="true"]) { border-color: var(--us); box-shadow: 0 0 0 1px var(--us); }
+  .ps1 { color: var(--accent); font-size: 1.25rem; font-weight: 700; }
+  .prompt input {
+    flex: 1 1 12ch;
+    min-inline-size: 0;
+    padding: 0.45rem 0;
     font: inherit;
+    font-size: 1.25rem;
     color: var(--ink);
     caret-color: var(--accent);
     background: transparent;
     border: 0;
-    border-block-end: 0.07em dashed var(--accent);
     border-radius: 0;
-    padding: 0 0.08em 0.02em;
-    field-sizing: content;
-    width: auto;
-    min-inline-size: 4ch;
-    max-inline-size: 100%;
   }
-  @supports not (field-sizing: content) {
-    .ask input { inline-size: min(14ch, 100%); }
-  }
-  .ask input::placeholder { color: var(--muted); opacity: 1; }
-  .ask input:focus { outline: none; }
-  .ask input:focus-visible { background: color-mix(in oklab, var(--accent) 14%, transparent); }
-  .ask input[aria-invalid="true"] { border-block-end-color: var(--us); }
-
-  .below {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem 1.5rem;
-    margin-block-start: clamp(1.25rem, 1rem + 1.5vw, 2.25rem);
-  }
+  .prompt input::placeholder { color: var(--muted); opacity: 1; }
+  .prompt input:focus { outline: none; }
   .go {
+    flex: none;
     font: 700 1rem/1 var(--mono);
     padding: 0.8em 1.2em;
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
     border-radius: 0;
     cursor: pointer;
   }
-  .go:hover { background: var(--accent); color: var(--accent-ink); }
-  .go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .go:hover { background: color-mix(in oklab, var(--accent) 82%, white); }
+  .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .go:disabled { cursor: progress; opacity: 0.7; }
-  .hint { margin: 0; color: var(--muted); text-wrap: pretty; }
+  .hint { margin: 0.75rem 0 0; color: var(--muted); text-wrap: pretty; }
   .hint a { color: var(--ink); }
   .error { margin: 1rem 0 0; color: var(--us); font-weight: 700; }
 
@@ -196,23 +195,21 @@
 </head>
 <body>
 <main>
-  <h1 class="sr-only">Where does your app live?</h1>
+  <h1 class="title">Where does your app live?</h1>
 
   <form id="ask" action="/" method="get" role="search" autocomplete="off">
-    <p class="ask">
-      <span aria-hidden="true">Where does</span>
+    <div class="prompt">
+      <span class="ps1" aria-hidden="true">$</span>
       <input id="d" name="d" type="text" inputmode="url" enterkeyhint="go"
-             placeholder="your app" aria-label="Domain or URL to look up" aria-invalid="false"
+             placeholder="example.com" aria-label="Domain or URL to look up"
+             aria-describedby="hint" aria-invalid="false"
              spellcheck="false" autocapitalize="none" required>
-      <span aria-hidden="true">live?</span>
-    </p>
-    <div class="below">
       <button class="go" id="go" type="submit">Look it up</button>
-      <p class="hint">Type a domain or paste a URL. Or try
-        <a href="/?d=hetzner.com">hetzner.com</a>,
-        <a href="/?d=svt.se">svt.se</a> or
-        <a href="/?d=github.com">github.com</a>.</p>
     </div>
+    <p class="hint" id="hint">Type a domain or paste a URL, then press Enter. Or try
+      <a href="/?d=hetzner.com">hetzner.com</a>,
+      <a href="/?d=svt.se">svt.se</a> or
+      <a href="/?d=github.com">github.com</a>.</p>
     <p id="err" class="error" hidden></p>
   </form>
 
@@ -386,14 +383,14 @@
     err.textContent = message;
     err.hidden = false;
     input.setAttribute("aria-invalid", "true");
-    input.setAttribute("aria-describedby", "err");
+    input.setAttribute("aria-describedby", "err hint");
     status.textContent = message;
     input.focus();
   }
   function clearError() {
     err.hidden = true;
     input.setAttribute("aria-invalid", "false");
-    input.removeAttribute("aria-describedby");
+    input.setAttribute("aria-describedby", "hint");
   }
 
   async function check(domain, push) {
@@ -422,6 +419,12 @@
 
   form.addEventListener("submit", e => { e.preventDefault(); check(input.value, true); });
   input.addEventListener("input", () => { if (!err.hidden) clearError(); });
+  // Like a URL bar: focusing a filled-in field selects it, so typing replaces the old domain.
+  input.addEventListener("focus", () => requestAnimationFrame(() => input.select()));
+  // The whole prompt box is the target, not just the text field inside it.
+  document.querySelector(".prompt").addEventListener("click", e => {
+    if (e.target === e.currentTarget || e.target.classList.contains("ps1")) input.focus();
+  });
   document.querySelectorAll(".hint a").forEach(a => a.addEventListener("click", e => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
