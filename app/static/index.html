@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where does your app live?</title>
+<meta name="description" content="Paste a domain. See who owns the servers behind it, and whether it is really European.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232f6fde' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%232f6fde'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --text: #16181d; --muted: #5d6470; --line: #e2e5ea;
+    --accent: #2f6fde; --accent-text: #ffffff;
+    --eu: #1d7a46; --eu-bg: #e6f4ec; --us: #b4441b; --us-bg: #fbece5;
+    --front: #9a6700; --front-bg: #fdf3dc; --other: #4a5a7a; --other-bg: #eceff5;
+    --unknown: #5d6470; --unknown-bg: #eef0f3;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --surface: #171a20; --text: #e8eaee; --muted: #9aa2af; --line: #2a2f38;
+      --accent: #5b8ff0; --accent-text: #0f1115;
+      --eu: #5fcf8f; --eu-bg: #15291e; --us: #f08a62; --us-bg: #2e1a12;
+      --front: #e5b545; --front-bg: #2c2410; --other: #9fb1d6; --other-bg: #1c2230;
+      --unknown: #9aa2af; --unknown-bg: #1d2027;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 32px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .lede { color: var(--muted); margin: 0 0 28px; }
+  form { display: flex; gap: 8px; }
+  input {
+    flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    font: inherit; font-weight: 600; padding: 12px 20px; border: 0; border-radius: 10px;
+    background: var(--accent); color: var(--accent-text); cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .try { margin: 12px 0 0; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip {
+    font: inherit; font-size: 14px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+    background: var(--surface); color: var(--text); border: 1px solid var(--line);
+  }
+  #out { margin-top: 32px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .verdict { border-left: 6px solid var(--z); }
+  .badge {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 6px; color: var(--z); background: var(--zbg);
+  }
+  .verdict h2 { font-size: 24px; margin: 10px 0 6px; line-height: 1.25; }
+  .verdict p { margin: 0; }
+  .notes { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .meta { margin-top: 12px; color: var(--muted); font-size: 13px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 12px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; padding-top: 0; }
+  .row .who { font-weight: 600; }
+  .row .sub { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .row .where { text-align: right; font-size: 14px; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+  .country { font-weight: 600; color: var(--z); white-space: nowrap; }
+  .chain { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; color: var(--muted); }
+  .chain b { color: var(--text); font-weight: 500; }
+  .error { color: var(--us); }
+  .z-eu { --z: var(--eu); --zbg: var(--eu-bg); }
+  .z-europe { --z: var(--eu); --zbg: var(--eu-bg); }
+  .z-us { --z: var(--us); --zbg: var(--us-bg); }
+  .z-front { --z: var(--front); --zbg: var(--front-bg); }
+  .z-other { --z: var(--other); --zbg: var(--other-bg); }
+  .z-unknown { --z: var(--unknown); --zbg: var(--unknown-bg); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; }
+  footer p { margin: 0 0 6px; }
+  footer a { color: inherit; }
+  @media (max-width: 520px) {
+    form { flex-direction: column; }
+    .row { grid-template-columns: 1fr; }
+    .row .where { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Where does your app live?</h1>
+  <p class="lede">Paste a domain. See who owns the servers behind it, and whether it's really European.</p>
+
+  <form id="f" autocomplete="off">
+    <input id="d" name="d" placeholder="example.com" aria-label="Domain" spellcheck="false" autocapitalize="off" required>
+    <button id="go" type="submit">Check</button>
+  </form>
+  <div class="try">Try:
+    <button class="chip" type="button">hetzner.com</button>
+    <button class="chip" type="button">github.com</button>
+    <button class="chip" type="button">svt.se</button>
+    <button class="chip" type="button">vercel.com</button>
+  </div>
+
+  <div id="out" aria-live="polite"></div>
+
+  <footer>
+    <p>Ownership decides the verdict, not location: a US company falls under the CLOUD Act wherever its servers stand. This is a best-effort technical check, not legal advice.</p>
+    <p>Data: <a href="https://stat.ripe.net/">RIPEstat</a> (RIPE NCC), GeoLite2 data by <a href="https://www.maxmind.com">MaxMind</a> via RIPEstat, and the IP ranges AWS and Google Cloud publish. This page loads nothing from third parties.</p>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const form = document.getElementById("f");
+  const input = document.getElementById("d");
+  const go = document.getElementById("go");
+  const out = document.getElementById("out");
+
+  const VERDICT = {
+    european: { label: "European", z: "eu" },
+    us_front_door: { label: "US front door", z: "front" },
+    us_owned: { label: "US-owned", z: "us" },
+    non_european: { label: "Outside Europe", z: "other" },
+    unknown: { label: "Unknown", z: "unknown" },
+  };
+  const KIND = { cdn: "CDN", cloud: "Cloud", hosting: "Hosting", platform: "Platform", network: "Network" };
+
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") el.className = v; else el.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+
+  function flag(cc) {
+    if (!cc || !/^[A-Z]{2}$/.test(cc)) return "";
+    return String.fromCodePoint(...[...cc].map(c => 0x1f1e6 + c.charCodeAt(0) - 65)) + " ";
+  }
+
+  function country(cc, zone, extra) {
+    return h("span", { class: `country z-${zone || "unknown"}` }, flag(cc), cc || "??", extra || null);
+  }
+
+  function where(host) {
+    if (host.anycast) return "anycast edge, everywhere";
+    if (host.cloud && host.cloud.region && host.cloud.region !== "GLOBAL") {
+      const c = host.cloud;
+      return `${c.provider.toUpperCase()} ${c.region}${c.place ? ` (${c.place})` : ""}`;
+    }
+    const loc = host.location;
+    if (loc && loc.country) return `IP located in ${loc.city ? loc.city + ", " : ""}${loc.country}`;
+    return "";
+  }
+
+  function render(r) {
+    const v = r.verdict;
+    const meta = VERDICT[v.code] || VERDICT.unknown;
+    const parts = [];
+
+    parts.push(h("section", { class: `card verdict z-${meta.z}` },
+      h("span", { class: "badge" }, meta.label),
+      h("h2", {}, v.headline),
+      h("p", {}, v.detail),
+      v.notes.length ? h("ul", { class: "notes" }, v.notes.map(n => h("li", {}, n))) : null,
+      h("div", { class: "meta" },
+        `${r.checked} · confidence ${v.confidence} · ${r.cached ? "cached" : r.took_ms + " ms"}`),
+    ));
+
+    if (r.layers.length) {
+      parts.push(h("section", { class: "card" },
+        h("h3", {}, "Seen in the DNS chain"),
+        r.layers.map(l => h("div", { class: "row" },
+          h("div", {}, h("div", { class: "who" }, `${l.service}`), h("div", { class: "sub mono" }, l.via)),
+          h("div", { class: "where" }, country(l.country, l.zone), h("div", { class: "sub" }, l.owner),
+            l.region ? h("div", { class: "sub" }, `region ${l.region}`) : null),
+        )),
+      ));
+    }
+
+    if (r.hosts.length) {
+      parts.push(h("section", { class: "card" },
+        h("h3", {}, r.hosts.length === 1 ? "Server" : "Servers"),
+        r.hosts.map(s => h("div", { class: "row" },
+          h("div", {},
+            h("div", { class: "who" }, s.owner, s.kind ? h("span", { class: "tag" }, KIND[s.kind] || s.kind) : null),
+            h("div", { class: "sub" }, h("span", { class: "mono" }, s.ip), s.asn ? ` · AS${s.asn}` : "",
+              s.network && s.network !== s.owner ? ` · ${s.network}` : ""),
+          ),
+          h("div", { class: "where" },
+            country(s.owner_country, s.zone, s.owner_source === "registration" ? h("span", { class: "tag" }, "registered") : null),
+            h("div", { class: "sub" }, where(s))),
+        )),
+      ));
+    }
+
+    if (r.cname_chain.length) {
+      const chain = [r.checked, ...r.cname_chain];
+      parts.push(h("section", { class: "card" },
+        h("h3", {}, "CNAME chain"),
+        h("div", { class: "chain" }, chain.flatMap((c, i) => i ? [" → ", h("b", {}, c)] : [h("b", {}, c)])),
+      ));
+    }
+
+    out.replaceChildren(...parts);
+  }
+
+  async function check(domain, push) {
+    domain = domain.trim();
+    if (!domain) return;
+    input.value = domain;
+    go.disabled = true;
+    out.replaceChildren(h("p", { class: "meta" }, `Looking up ${domain}…`));
+    if (push) history.pushState(null, "", `?d=${encodeURIComponent(domain)}`);
+    try {
+      const res = await fetch(`/api/lookup?domain=${encodeURIComponent(domain)}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `Something went wrong (${res.status}).`);
+      render(body);
+    } catch (e) {
+      out.replaceChildren(h("p", { class: "error" }, e.message || "Something went wrong."));
+    } finally {
+      go.disabled = false;
+    }
+  }
+
+  form.addEventListener("submit", e => { e.preventDefault(); check(input.value, true); });
+  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => check(b.textContent, true)));
+  window.addEventListener("popstate", () => {
+    const d = new URLSearchParams(location.search).get("d");
+    if (d) check(d, false); else out.replaceChildren();
+  });
+  const initial = new URLSearchParams(location.search).get("d");
+  if (initial) check(initial, false); else input.focus();
+})();
+</script>
+</body>
+</html>
