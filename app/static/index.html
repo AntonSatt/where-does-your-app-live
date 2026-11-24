@@ -3,239 +3,447 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="text-scale" content="scale">
+<meta name="color-scheme" content="light dark">
 <title>Where does your app live?</title>
-<meta name="description" content="Paste a domain. See who owns the servers behind it, and whether it is really European.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232f6fde' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%232f6fde'/%3E%3C/svg%3E">
+<meta name="description" content="Type a domain. See who owns the servers behind it, and whether it is really European.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%231d1b17' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%231d1b17'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #f6f7f9; --surface: #ffffff; --text: #16181d; --muted: #5d6470; --line: #e2e5ea;
-    --accent: #2f6fde; --accent-text: #ffffff;
-    --eu: #1d7a46; --eu-bg: #e6f4ec; --us: #b4441b; --us-bg: #fbece5;
-    --front: #9a6700; --front-bg: #fdf3dc; --other: #4a5a7a; --other-bg: #eceff5;
-    --unknown: #5d6470; --unknown-bg: #eef0f3;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1115; --surface: #171a20; --text: #e8eaee; --muted: #9aa2af; --line: #2a2f38;
-      --accent: #5b8ff0; --accent-text: #0f1115;
-      --eu: #5fcf8f; --eu-bg: #15291e; --us: #f08a62; --us-bg: #2e1a12;
-      --front: #e5b545; --front-bg: #2c2410; --other: #9fb1d6; --other-bg: #1c2230;
-      --unknown: #9aa2af; --unknown-bg: #1d2027;
-    }
+    color-scheme: light dark;
+    --paper: light-dark(#f2eee5, #141310);
+    --ink: light-dark(#1d1b17, #ece7dc);
+    --muted: light-dark(#6a6458, #a19a8b);
+    --rule: light-dark(#d3cbba, #3a362d);
+    --eu: light-dark(#1d6a43, #86d3a5);
+    --us: light-dark(#ad3518, #ff9b7b);
+    --front: light-dark(#7f5300, #e9b650);
+    --other: light-dark(#3d5884, #a3badf);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", P052, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+    accent-color: var(--ink);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; }
   body {
-    background: var(--bg); color: var(--text);
-    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 1.125rem;
+    line-height: 1.5;
   }
-  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 32px; }
-  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.02em; }
-  .lede { color: var(--muted); margin: 0 0 28px; }
-  form { display: flex; gap: 8px; }
-  input {
-    flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 12px 14px;
-    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text);
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: inherit; text-decoration-thickness: 0.06em; text-underline-offset: 0.2em; }
+  a:hover { text-decoration-thickness: 0.12em; }
+  code { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhere; }
+  .sr-only {
+    position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
   }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  button {
-    font: inherit; font-weight: 600; padding: 12px 20px; border: 0; border-radius: 10px;
-    background: var(--accent); color: var(--accent-text); cursor: pointer;
+
+  main {
+    max-inline-size: 64rem;
+    margin-inline: auto;
+    padding: clamp(2.5rem, 1rem + 6vw, 7rem) clamp(1rem, 0.5rem + 4vw, 3rem) 3rem;
   }
-  button:disabled { opacity: 0.6; cursor: default; }
-  .try { margin: 12px 0 0; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip {
-    font: inherit; font-size: 14px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
-    background: var(--surface); color: var(--text); border: 1px solid var(--line);
+
+  /* The question is the form: "Where does ____ live?" */
+  .ask {
+    margin: 0;
+    font-size: clamp(2.1rem, 1.3rem + 3.6vw, 5rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.25em;
   }
-  #out { margin-top: 32px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
-  .verdict { border-left: 6px solid var(--z); }
-  .badge {
-    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 3px 9px; border-radius: 6px; color: var(--z); background: var(--zbg);
+  .ask input {
+    font: inherit;
+    font-family: var(--mono);
+    font-size: 0.76em;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    border-block-end: 0.06em solid currentColor;
+    border-radius: 0;
+    padding: 0 0.08em 0.02em;
+    field-sizing: content;
+    width: auto;
+    min-inline-size: 4ch;
+    max-inline-size: 100%;
   }
-  .verdict h2 { font-size: 24px; margin: 10px 0 6px; line-height: 1.25; }
-  .verdict p { margin: 0; }
-  .notes { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
-  .meta { margin-top: 12px; color: var(--muted); font-size: 13px; }
-  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 12px; }
-  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
-  .row:first-of-type { border-top: 0; padding-top: 0; }
-  .row .who { font-weight: 600; }
-  .row .sub { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-  .row .where { text-align: right; font-size: 14px; }
-  .mono { font-family: var(--mono); font-size: 13px; }
-  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
-  .country { font-weight: 600; color: var(--z); white-space: nowrap; }
-  .chain { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; color: var(--muted); }
-  .chain b { color: var(--text); font-weight: 500; }
-  .error { color: var(--us); }
-  .z-eu { --z: var(--eu); --zbg: var(--eu-bg); }
-  .z-europe { --z: var(--eu); --zbg: var(--eu-bg); }
-  .z-us { --z: var(--us); --zbg: var(--us-bg); }
-  .z-front { --z: var(--front); --zbg: var(--front-bg); }
-  .z-other { --z: var(--other); --zbg: var(--other-bg); }
-  .z-unknown { --z: var(--unknown); --zbg: var(--unknown-bg); }
-  footer { color: var(--muted); font-size: 13px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; }
-  footer p { margin: 0 0 6px; }
-  footer a { color: inherit; }
-  @media (max-width: 520px) {
-    form { flex-direction: column; }
-    .row { grid-template-columns: 1fr; }
-    .row .where { text-align: left; }
+  @supports not (field-sizing: content) {
+    .ask input { inline-size: min(12ch, 100%); }
+  }
+  .ask input::placeholder {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.3em;
+    letter-spacing: -0.015em;
+    color: var(--muted);
+    opacity: 1;
+  }
+  .ask input:focus { outline: none; }
+  .ask input:focus-visible {
+    border-block-end-width: 0.1em;
+    background: color-mix(in oklab, var(--ink) 7%, transparent);
+  }
+  .ask input[aria-invalid="true"] { border-block-end-color: var(--us); }
+
+  .below {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-block-start: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  }
+  .go {
+    font: 600 0.9rem/1 var(--mono);
+    padding: 0.85em 1.3em;
+    background: var(--ink);
+    color: var(--paper);
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .go:hover { background: color-mix(in oklab, var(--ink) 82%, var(--paper)); }
+  .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .go:disabled { cursor: progress; opacity: 0.7; }
+  .hint { margin: 0; color: var(--muted); font-style: italic; text-wrap: pretty; }
+  .hint a { font-style: normal; font-family: var(--mono); font-size: 0.86em; color: var(--ink); }
+  .error { margin: 1rem 0 0; color: var(--us); font-family: var(--mono); font-size: 0.9rem; }
+
+  /* The answer */
+  .result {
+    margin-block-start: clamp(2.5rem, 1.5rem + 4vw, 5rem);
+    padding-block-start: 2rem;
+    border-block-start: 1px solid var(--rule);
+  }
+  .answer {
+    margin: 0;
+    max-inline-size: 30ch;
+    font-size: clamp(1.6rem, 1.15rem + 2vw, 2.9rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .answer code { font-size: 0.8em; letter-spacing: -0.03em; }
+  .stamp {
+    margin: 1rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--z);
+  }
+  .stamp::before { content: ""; inline-size: 0.75em; block-size: 0.75em; background: currentColor; flex: none; }
+  .detail { margin: 1.25rem 0 0; max-inline-size: 62ch; text-wrap: pretty; }
+  .notes { margin: 0.75rem 0 0; padding: 0; list-style: none; max-inline-size: 62ch; color: var(--muted); font-size: 0.95rem; }
+  .notes li + li { margin-block-start: 0.35rem; }
+
+  /* The route from the name to the server */
+  .route {
+    list-style: none;
+    margin: 2.75rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 1.25rem;
+  }
+  .route > li { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+  .step {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: end;
+    padding-block-start: 0.3rem;
+  }
+  .hop {
+    position: relative;
+    padding: 0 0 1.9rem 1.5rem;
+    border-inline-start: 1px solid var(--rule);
+    min-inline-size: 0;
+  }
+  .route > li:last-child .hop { border-inline-start-color: transparent; padding-block-end: 0; }
+  .hop::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: -0.4rem;
+    inset-block-start: 0.45rem;
+    inline-size: 0.8rem;
+    block-size: 0.8rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1.5px solid var(--z, var(--muted));
+  }
+  .hop.known::before { background: var(--z, var(--muted)); }
+  .hop p { margin: 0; text-wrap: pretty; }
+  .hop p + p { margin-block-start: 0.35rem; }
+  .hop .data { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  .hop .alias { font-family: var(--mono); font-size: 0.85rem; overflow-wrap: anywhere; }
+  .hop .alias span { color: var(--muted); }
+  .owner + .owner { margin-block-start: 1rem; }
+  details { margin-block-start: 0.4rem; }
+  summary { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); cursor: pointer; inline-size: fit-content; }
+  .ips { list-style: none; margin: 0.35rem 0 0; padding: 0; font-family: var(--mono); font-size: 0.8rem; overflow-wrap: anywhere; }
+  .meta { margin: 2rem 0 0; font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+
+  .z-eu { --z: var(--eu); }
+  .z-us { --z: var(--us); }
+  .z-front { --z: var(--front); }
+  .z-other { --z: var(--other); }
+  .z-unknown { --z: var(--muted); }
+
+  footer {
+    margin-block-start: clamp(3rem, 2rem + 4vw, 6rem);
+    padding-block-start: 1.25rem;
+    border-block-start: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  footer p { margin: 0 0 0.6rem; max-inline-size: 62ch; text-wrap: pretty; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      transition: opacity 0.45s ease, translate 0.45s ease;
+      transition-delay: calc(var(--i, 0) * 70ms);
+    }
+    @starting-style {
+      .reveal { opacity: 0; translate: 0 0.4rem; }
+    }
   }
 </style>
 </head>
 <body>
 <main>
-  <h1>Where does your app live?</h1>
-  <p class="lede">Paste a domain. See who owns the servers behind it, and whether it's really European.</p>
+  <h1 class="sr-only">Where does your app live?</h1>
 
-  <form id="f" autocomplete="off">
-    <input id="d" name="d" placeholder="example.com" aria-label="Domain" spellcheck="false" autocapitalize="off" required>
-    <button id="go" type="submit">Check</button>
+  <form id="ask" action="/" method="get" role="search" autocomplete="off">
+    <p class="ask">
+      <span aria-hidden="true">Where does</span>
+      <input id="d" name="d" type="text" inputmode="url" enterkeyhint="go"
+             placeholder="your app" aria-label="Domain or URL to look up" aria-invalid="false"
+             spellcheck="false" autocapitalize="none" required>
+      <span aria-hidden="true">live?</span>
+    </p>
+    <div class="below">
+      <button class="go" id="go" type="submit">Look it up</button>
+      <p class="hint">Type a domain or paste a URL. Or try
+        <a href="/?d=hetzner.com">hetzner.com</a>,
+        <a href="/?d=svt.se">svt.se</a> or
+        <a href="/?d=github.com">github.com</a>.</p>
+    </div>
+    <p id="err" class="error" hidden></p>
   </form>
-  <div class="try">Try:
-    <button class="chip" type="button">hetzner.com</button>
-    <button class="chip" type="button">github.com</button>
-    <button class="chip" type="button">svt.se</button>
-    <button class="chip" type="button">vercel.com</button>
-  </div>
 
-  <div id="out" aria-live="polite"></div>
+  <div id="status" class="sr-only" aria-live="polite"></div>
+  <section id="out" aria-label="Result"></section>
 
   <footer>
-    <p>Ownership decides the verdict, not location: a US company falls under the CLOUD Act wherever its servers stand. This is a best-effort technical check, not legal advice.</p>
-    <p>Data: <a href="https://stat.ripe.net/">RIPEstat</a> (RIPE NCC), GeoLite2 data by <a href="https://www.maxmind.com">MaxMind</a> via RIPEstat, and the IP ranges AWS and Google Cloud publish. This page loads nothing from third parties.</p>
+    <p>Ownership decides the answer, not location. A US company falls under the CLOUD Act wherever its servers stand, and a CDN decrypts every request on its own network. This is a best-effort technical check, not legal advice.</p>
+    <p>Data from <a href="https://stat.ripe.net/">RIPEstat</a> (RIPE NCC), GeoLite2 by <a href="https://www.maxmind.com">MaxMind</a> via RIPEstat, and the IP ranges AWS and Google Cloud publish. This page loads nothing from third parties. <a href="https://github.com/AntonSatt/where-does-your-app-live">Source on GitHub</a>.</p>
   </footer>
 </main>
 
 <script>
 (() => {
-  const form = document.getElementById("f");
+  const form = document.getElementById("ask");
   const input = document.getElementById("d");
   const go = document.getElementById("go");
+  const err = document.getElementById("err");
   const out = document.getElementById("out");
+  const status = document.getElementById("status");
 
-  const VERDICT = {
-    european: { label: "European", z: "eu" },
-    us_front_door: { label: "US front door", z: "front" },
-    us_owned: { label: "US-owned", z: "us" },
-    non_european: { label: "Outside Europe", z: "other" },
-    unknown: { label: "Unknown", z: "unknown" },
+  const regions = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
+  const country = cc => { try { return (cc && regions && regions.of(cc)) || cc || "an unknown country"; } catch { return cc; } };
+  const ZONE = { eu: "z-eu", europe: "z-eu", us: "z-us", other: "z-other", unknown: "z-unknown" };
+  const STAMP = {
+    european: ["z-eu", "European"],
+    us_owned: ["z-us", "US-owned · the CLOUD Act applies"],
+    us_front_door: ["z-front", "US front door · the server behind it is hidden"],
+    non_european: ["z-other", "Owned outside Europe"],
+    unknown: ["z-unknown", "Unknown"],
   };
-  const KIND = { cdn: "CDN", cloud: "Cloud", hosting: "Hosting", platform: "Platform", network: "Network" };
+  const KIND = { cdn: "CDN", cloud: "cloud", hosting: "hosting", platform: "platform", network: "network operator" };
 
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
-      if (k === "class") el.className = v; else el.setAttribute(k, v);
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v; else if (k === "style") el.style.cssText = v; else el.setAttribute(k, v);
     }
-    for (const kid of kids.flat()) {
-      if (kid == null || kid === false) continue;
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false || kid === "") continue;
       el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
     }
     return el;
   }
+  const and = items => {
+    const u = [...new Set(items)];
+    return u.length < 2 ? u.join("") : `${u.slice(0, -1).join(", ")} and ${u.at(-1)}`;
+  };
+  const isFront = s => s.kind === "cdn" || (s.cloud && s.cloud.service === "CLOUDFRONT");
+  const doorName = s => (s.cloud && s.cloud.service === "CLOUDFRONT" ? "Amazon CloudFront" : s.owner);
 
-  function flag(cc) {
-    if (!cc || !/^[A-Z]{2}$/.test(cc)) return "";
-    return String.fromCodePoint(...[...cc].map(c => 0x1f1e6 + c.charCodeAt(0) - 65)) + " ";
-  }
-
-  function country(cc, zone, extra) {
-    return h("span", { class: `country z-${zone || "unknown"}` }, flag(cc), cc || "??", extra || null);
-  }
-
-  function where(host) {
-    if (host.anycast) return "anycast edge, everywhere";
-    if (host.cloud && host.cloud.region && host.cloud.region !== "GLOBAL") {
-      const c = host.cloud;
-      return `${c.provider.toUpperCase()} ${c.region}${c.place ? ` (${c.place})` : ""}`;
+  function group(hosts) {
+    const groups = new Map();
+    for (const s of hosts) {
+      const name = doorName(s);
+      if (!groups.has(name)) {
+        groups.set(name, { name, cc: s.owner_country, zone: s.zone, source: s.owner_source, kind: s.kind,
+          front: isFront(s), anycast: s.anycast, asns: new Set(), networks: new Set(), hosts: [] });
+      }
+      const g = groups.get(name);
+      if (s.asn) g.asns.add(`AS${s.asn}`);
+      if (s.network && s.network !== s.owner) g.networks.add(s.network);
+      g.hosts.push(s);
     }
-    const loc = host.location;
-    if (loc && loc.country) return `IP located in ${loc.city ? loc.city + ", " : ""}${loc.country}`;
-    return "";
+    return [...groups.values()];
+  }
+
+  function answer(r, groups) {
+    const d = h("code", {}, r.domain);
+    const usNames = and([...groups.filter(g => g.zone === "us").map(g => g.name),
+                         ...r.layers.filter(l => l.zone === "us").map(l => l.owner)]);
+    switch (r.verdict.code) {
+      case "european":
+        return [d, " lives in Europe, with ", h("em", {}, and(groups.map(g => g.name))), "."];
+      case "us_owned":
+        return [d, r.verdict.headline.startsWith("Partly") ? " lives partly on " : " lives on ", h("em", {}, usNames), "."];
+      case "us_front_door":
+        return ["You reach ", d, " through ", h("em", {}, and(groups.filter(g => g.front).map(g => g.name))), "."];
+      case "non_european":
+        return [d, " lives with ", h("em", {}, and(groups.map(g => `${g.name} in ${country(g.cc)}`))), "."];
+      default:
+        return [d, " has no public servers we can place."];
+    }
+  }
+
+  function dnsHop(r) {
+    if (!r.cname_chain.length) return h("p", {}, "Answers with its own addresses. No aliases.");
+    const layer = name => r.layers.find(l => l.via === name);
+    return [
+      h("p", {}, "Is an alias for"),
+      r.cname_chain.map(name => {
+        const l = layer(name);
+        return h("p", { class: "alias" }, `→ ${name}`, l ? h("span", {}, ` (${l.service}, ${country(l.country)})`) : null);
+      }),
+    ];
+  }
+
+  function doorHop(groups) {
+    return groups.map(g => h("div", { class: "owner" },
+      h("p", {}, h("strong", {}, g.name), `, ${country(g.cc)}`,
+        g.source === "registration" ? h("span", { class: "data" }, " (where the network is registered)") : null),
+      h("p", { class: "data" }, [g.kind ? KIND[g.kind] || g.kind : null, ...g.asns, ...g.networks].filter(Boolean).join(" · ")),
+      g.anycast ? h("p", { class: "data" }, "Anycast: the same addresses answer from edges all over the world.") : null,
+      h("details", {},
+        h("summary", {}, g.hosts.length === 1 ? "1 address" : `${g.hosts.length} addresses`),
+        h("ul", { class: "ips" }, g.hosts.map(s => h("li", {}, s.ip)))),
+    ));
+  }
+
+  function houseHop(groups) {
+    return groups.map(g => {
+      if (g.front) {
+        return h("p", {}, `Hidden. ${g.name} terminates HTTPS and passes requests on to a server that can't be seen from outside.`);
+      }
+      const ga = g.hosts.find(s => s.cloud && s.cloud.service === "GLOBALACCELERATOR");
+      if (ga) return h("p", {}, "Somewhere inside AWS. Global Accelerator only routes to AWS, but the region doesn't show.");
+      const cloud = g.hosts.find(s => s.cloud && s.cloud.region && s.cloud.region !== "GLOBAL");
+      if (cloud) {
+        const c = cloud.cloud;
+        return h("p", {}, h("strong", {}, `${c.provider.toUpperCase()} ${c.region}`), c.place ? `, ${c.place}` : "", ".");
+      }
+      const loc = g.hosts.map(s => s.location).find(l => l && l.country);
+      if (loc) {
+        return h("p", {}, `${g.name}'s own network. The address is located in `,
+          h("strong", {}, [loc.city, country(loc.country)].filter(Boolean).join(", ")), ".");
+      }
+      return h("p", {}, `${g.name}'s own network.`);
+    });
   }
 
   function render(r) {
     const v = r.verdict;
-    const meta = VERDICT[v.code] || VERDICT.unknown;
-    const parts = [];
+    const [zoneClass, stamp] = STAMP[v.code] || STAMP.unknown;
+    const groups = group(r.hosts);
+    const houseKnown = groups.length && !groups.every(g => g.front);
+    const houseZone = houseKnown ? ZONE[groups.find(g => !g.front).zone] : "z-unknown";
+    let i = 0;
+    const step = (label, cls, body) => h("li", { class: "reveal", style: `--i:${++i}` },
+      h("span", { class: "step" }, label), h("div", { class: `hop ${cls}` }, body));
 
-    parts.push(h("section", { class: `card verdict z-${meta.z}` },
-      h("span", { class: "badge" }, meta.label),
-      h("h2", {}, v.headline),
-      h("p", {}, v.detail),
-      v.notes.length ? h("ul", { class: "notes" }, v.notes.map(n => h("li", {}, n))) : null,
-      h("div", { class: "meta" },
-        `${r.checked} · confidence ${v.confidence} · ${r.cached ? "cached" : r.took_ms + " ms"}`),
+    const steps = [step("you", "", h("p", {}, "Ask for ", h("code", {}, r.checked), "."))];
+    steps.push(step("dns", "", dnsHop(r)));
+    if (groups.length) {
+      steps.push(step("door", `known ${ZONE[groups[0].zone] || "z-unknown"}`, doorHop(groups)));
+      steps.push(step("house", `${houseKnown ? "known " : ""}${houseZone}`, houseHop(groups)));
+    }
+
+    const answerText = answer(r, groups);
+    out.replaceChildren(h("article", { class: `result ${zoneClass}` },
+      h("p", { class: "answer reveal" }, answerText),
+      h("p", { class: "stamp reveal", style: "--i:1" }, stamp),
+      h("p", { class: "detail reveal", style: "--i:2" }, v.detail),
+      v.notes.length ? h("ul", { class: "notes reveal", style: "--i:2" }, v.notes.map(n => h("li", {}, n))) : null,
+      h("ol", { class: "route", "aria-label": "From the name to the server" }, steps),
+      h("p", { class: "meta" }, `confidence ${v.confidence} · ${r.cached ? "cached" : `${r.took_ms} ms`}`),
     ));
+    status.textContent = `${out.querySelector(".answer").textContent} ${stamp}.`;
+  }
 
-    if (r.layers.length) {
-      parts.push(h("section", { class: "card" },
-        h("h3", {}, "Seen in the DNS chain"),
-        r.layers.map(l => h("div", { class: "row" },
-          h("div", {}, h("div", { class: "who" }, `${l.service}`), h("div", { class: "sub mono" }, l.via)),
-          h("div", { class: "where" }, country(l.country, l.zone), h("div", { class: "sub" }, l.owner),
-            l.region ? h("div", { class: "sub" }, `region ${l.region}`) : null),
-        )),
-      ));
-    }
-
-    if (r.hosts.length) {
-      parts.push(h("section", { class: "card" },
-        h("h3", {}, r.hosts.length === 1 ? "Server" : "Servers"),
-        r.hosts.map(s => h("div", { class: "row" },
-          h("div", {},
-            h("div", { class: "who" }, s.owner, s.kind ? h("span", { class: "tag" }, KIND[s.kind] || s.kind) : null),
-            h("div", { class: "sub" }, h("span", { class: "mono" }, s.ip), s.asn ? ` · AS${s.asn}` : "",
-              s.network && s.network !== s.owner ? ` · ${s.network}` : ""),
-          ),
-          h("div", { class: "where" },
-            country(s.owner_country, s.zone, s.owner_source === "registration" ? h("span", { class: "tag" }, "registered") : null),
-            h("div", { class: "sub" }, where(s))),
-        )),
-      ));
-    }
-
-    if (r.cname_chain.length) {
-      const chain = [r.checked, ...r.cname_chain];
-      parts.push(h("section", { class: "card" },
-        h("h3", {}, "CNAME chain"),
-        h("div", { class: "chain" }, chain.flatMap((c, i) => i ? [" → ", h("b", {}, c)] : [h("b", {}, c)])),
-      ));
-    }
-
-    out.replaceChildren(...parts);
+  function showError(message) {
+    err.textContent = message;
+    err.hidden = false;
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", "err");
+    status.textContent = message;
+    input.focus();
+  }
+  function clearError() {
+    err.hidden = true;
+    input.setAttribute("aria-invalid", "false");
+    input.removeAttribute("aria-describedby");
   }
 
   async function check(domain, push) {
     domain = domain.trim();
     if (!domain) return;
     input.value = domain;
+    clearError();
     go.disabled = true;
-    out.replaceChildren(h("p", { class: "meta" }, `Looking up ${domain}…`));
+    out.setAttribute("aria-busy", "true");
+    out.replaceChildren(h("p", { class: "meta" }, `Following ${domain}…`));
+    status.textContent = `Looking up ${domain}.`;
     if (push) history.pushState(null, "", `?d=${encodeURIComponent(domain)}`);
     try {
       const res = await fetch(`/api/lookup?domain=${encodeURIComponent(domain)}`);
-      const body = await res.json();
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `Something went wrong (${res.status}).`);
       render(body);
     } catch (e) {
-      out.replaceChildren(h("p", { class: "error" }, e.message || "Something went wrong."));
+      out.replaceChildren();
+      showError(e.message || "Something went wrong.");
     } finally {
       go.disabled = false;
+      out.removeAttribute("aria-busy");
     }
   }
 
   form.addEventListener("submit", e => { e.preventDefault(); check(input.value, true); });
-  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => check(b.textContent, true)));
+  input.addEventListener("input", () => { if (!err.hidden) clearError(); });
+  document.querySelectorAll(".hint a").forEach(a => a.addEventListener("click", e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    check(a.textContent, true);
+  }));
   window.addEventListener("popstate", () => {
     const d = new URLSearchParams(location.search).get("d");
-    if (d) check(d, false); else out.replaceChildren();
+    if (d) check(d, false); else { out.replaceChildren(); input.value = ""; }
   });
   const initial = new URLSearchParams(location.search).get("d");
   if (initial) check(initial, false); else input.focus();
