@@ -88,10 +88,12 @@ def judge(hosts: list[Host], layers: list[CnameMatch]) -> Verdict:
     notes: list[str] = []
     for h in hosts:
         if not h.owner and h.registered_country:
-            notes.append(
+            note = (
                 f"{h.name}: the country is where the network is registered. "
                 "The company behind it can be based somewhere else."
             )
+            if note not in notes:  # one per network, not one per address
+                notes.append(note)
     confidence = "medium" if notes or any(h.country is None for h in hosts) else "high"
     if any(h.cloud and h.cloud.service == "GLOBALACCELERATOR" for h in hosts):
         notes.append(

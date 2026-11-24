@@ -56,7 +56,7 @@ def test_cname_rules():
 
 
 def test_zones():
-    assert zone("SE") == "eu" and zone("NO") == "eu"
+    assert zone("SE") == "eu" and zone("NO") == "eu" and zone("EU") == "eu"
     assert zone("CH") == "europe" and zone("GB") == "europe"
     assert zone("US") == "us" and zone("CA") == "other" and zone(None) == "unknown"
 
@@ -129,6 +129,8 @@ def test_us_platform_in_cname_chain_counts():
 def test_registration_country_lowers_confidence():
     v = judge([host(64512, registered="SE")], [])
     assert v.code == "european" and v.confidence == "medium" and v.notes
+    # Two addresses on the same network give one note, not two.
+    assert len(judge([host(64512, registered="SE"), host(64512, registered="SE")], []).notes) == 1
 
 
 def test_outside_europe():
