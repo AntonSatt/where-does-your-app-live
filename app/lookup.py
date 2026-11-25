@@ -21,7 +21,7 @@ import dns.resolver
 
 from .cache import MISSING, TTLCache
 from .cloud import CloudRanges
-from .owners import CnameMatch, match_cname, owner_for_asn, zone
+from .owners import CnameMatch, clean_holder, match_cname, owner_for_asn, owner_for_holder, zone
 from .ripestat import Location, RipeStat, UpstreamError
 from .verdict import Host, judge
 
@@ -172,10 +172,11 @@ class Lookup:
         owner = owner_for_asn(asn) if asn else None
         holder, registered = None, None
         if asn:
-            holder, registered = await asyncio.gather(
-                _soft(self._ripe.holder(asn), None),
-                _soft(self._ripe.registered_country(asn), None) if not owner else _none(),
-            )
+            holder = await _soft(self._ripe.holder(asn), None)
+            # A network the table doesn't list may still carry a known company's name.
+            owner = owner or owner_for_holder(holder)
+            if not owner:
+                registered = await _soft(self._ripe.registered_country(asn), None)
         return Host(ip, asn, holder, owner, registered, location, cloud)
 
 
@@ -184,10 +185,6 @@ async def _soft(coro, default):
         return await coro
     except UpstreamError:
         return default
-
-
-async def _none():
-    return None
 
 
 def _layer(m: CnameMatch) -> dict:
@@ -205,7 +202,7 @@ def _host_json(h: Host) -> dict:
     return {
         "ip": h.ip,
         "asn": h.asn,
-        "network": h.network,
+        "network": clean_holder(h.network),
         "owner": h.name,
         "owner_country": h.country,
         "owner_source": "curated" if h.owner else ("registration" if h.registered_country else None),

@@ -4,7 +4,7 @@ import pytest
 
 from app.cloud import CloudMatch, best_match, parse_aws, parse_gcp
 from app.lookup import InputError, normalize
-from app.owners import ORGS, match_cname, owner_for_asn, zone
+from app.owners import ORGS, clean_holder, match_cname, owner_for_asn, owner_for_holder, zone
 from app.ripestat import Location
 from app.verdict import Host, judge
 
@@ -43,6 +43,45 @@ def test_parent_company_beats_registration_country():
     assert owner_for_asn(20940).country == "US"
     assert owner_for_asn(202053).name == "UpCloud"
     assert owner_for_asn(999999) is None
+
+
+def test_known_company_by_network_name():
+    # AS33905 isn't in the table, but its name gives Akamai away (sr.se, 2026-11-25).
+    assert owner_for_holder("AKAMAI-AMS Akamai International B.V..").key == "akamai"
+    assert owner_for_holder("LINODE-AP Linode, LLC").key == "akamai-cloud"
+    assert owner_for_holder("AMAZON-02 - Amazon.com, Inc.").key == "aws"
+    assert owner_for_holder("Amazonas Telecom") is None  # a Brazilian state, not Amazon
+    assert owner_for_holder("Swedish_Tax_Agency Swedish Tax Agency") is None
+    assert owner_for_holder(None) is None
+
+
+def test_akamai_subsidiary_is_a_us_front_door():
+    akamai_nl = Host("192.0.2.1", 33905, "AKAMAI-AMS Akamai International B.V.",
+                     owner_for_holder("AKAMAI-AMS Akamai International B.V."), None, NOWHERE)
+    assert judge([akamai_nl], []).code == "us_front_door"
+
+
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        ("Swedish_Tax_Agency Swedish Tax Agency", "Swedish Tax Agency"),
+        ("AKAMAI-AMS Akamai International B.V..", "Akamai International B.V."),
+        ("SUNET - Vetenskapsradet / SUNET", "Vetenskapsradet / SUNET"),
+        ("BASEFARM-SE-ASN Orange Business Digital Sweden AB", "Orange Business Digital Sweden AB"),
+        ("EPISERVER_AS Optimizely AB", "Optimizely AB"),
+        ("PROTON Proton AG", "Proton AG"),
+        ("radware Radware Ltd", "Radware Ltd"),
+        ("UPCLOUD UpCloud Ltd", "UpCloud Ltd"),
+        # Not handles: these stay whole.
+        ("IBM Corporation", "IBM Corporation"),
+        ("OVH SAS", "OVH SAS"),
+        ("T-Mobile Netherlands B.V.", "T-Mobile Netherlands B.V."),
+        ("Telia Company AB", "Telia Company AB"),
+        ("Foo Bar - Baz", "Foo Bar - Baz"),
+    ],
+)
+def test_clean_holder(raw, clean):
+    assert clean_holder(raw) == clean
 
 
 def test_cname_rules():

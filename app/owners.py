@@ -190,6 +190,77 @@ def owner_for_asn(asn: int) -> Org | None:
     return ORGS[key] if key else None
 
 
+# Companies we recognise by the name on a network the ASN table doesn't list.
+# Big CDNs and clouds register many networks through local subsidiaries, so
+# the registration country alone misleads: AS33905 "Akamai International
+# B.V." is in the Netherlands, but the company behind it is American. Order
+# matters (Linode before Akamai), and each pattern is narrow on purpose:
+# "Amazonas" is a Brazilian state, not Amazon.
+HOLDER_NAMES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(p, re.IGNORECASE), key)
+    for p, key in [
+        (r"\blinode\b", "akamai-cloud"),
+        (r"\bakamai\b", "akamai"),
+        (r"\bcloudflare\b", "cloudflare"),
+        (r"\bfastly\b", "fastly"),
+        (r"\bamazon(\.com|\s+(web|data)\s+services|\s+technologies)\b", "aws"),
+        (r"\bmicrosoft\b", "azure"),
+        (r"\bgoogle\b", "google"),
+        (r"\boracle\b", "oracle"),
+        (r"\bdigitalocean\b", "digitalocean"),
+        (r"\b(facebook|meta platforms)\b", "meta"),
+        (r"\bhetzner\b", "hetzner"),
+        (r"\bovh", "ovh"),
+        (r"\bscaleway\b", "scaleway"),
+        (r"\bupcloud\b", "upcloud"),
+        (r"\bleaseweb\b", "leaseweb"),
+    ]
+]
+
+
+def owner_for_holder(holder: str | None) -> Org | None:
+    if not holder:
+        return None
+    for pattern, key in HOLDER_NAMES:
+        if pattern.search(holder):
+            return ORGS[key]
+    return None
+
+
+_AS_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+def clean_holder(raw: str | None) -> str | None:
+    """Turn a RIPE holder into the organisation's name.
+
+    RIPEstat puts the network's handle in front, sometimes with " - " and
+    sometimes not: "SUNET - Vetenskapsradet / SUNET", "AKAMAI-AMS Akamai
+    International B.V.", "Swedish_Tax_Agency Swedish Tax Agency". The
+    handle goes only when it clearly is one, so "IBM Corporation" and
+    "T-Mobile Netherlands" stay whole.
+    """
+    if not raw:
+        return raw
+    name = " ".join(raw.split())
+    head, sep, tail = name.partition(" - ")
+    if sep and tail and _AS_NAME.match(head):
+        name = tail
+    else:
+        first, _, rest = name.partition(" ")
+        if rest and _AS_NAME.match(first) and _is_handle(first, rest):
+            name = rest
+    name = re.sub(r"\.{2,}$", ".", name)
+    return name.strip() or raw
+
+
+def _is_handle(first: str, rest: str) -> bool:
+    if "_" in first:
+        return True
+    if not any(c.islower() for c in first):  # AKAMAI-AMS, PROTON, YANDEX
+        return "-" in first or first.lower() in rest.lower().replace(" ", "")
+    return rest.lower().startswith(first.lower())  # "radware Radware Ltd"
+
+
 def zone(country: str | None) -> str:
     """Return "eu", "europe", "us", "other" or "unknown" for a country code."""
     if not country:

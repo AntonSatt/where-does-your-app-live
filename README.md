@@ -22,10 +22,11 @@ deployment and will be taken down in December 2026.
    [RIPEstat](https://stat.ripe.net/docs/data-api/): which network (ASN)
    announces it, who holds that network and where it is registered.
 3. **Parent company:** a curated table maps the networks that matter to the
-   company behind them. Registration country alone misleads: Akamai registers
-   networks in the Netherlands and Cloudflare in London, but both are US
-   companies. Unknown networks fall back to the registration country, and the
-   verdict says so.
+   company behind them, and a network the table doesn't list is still
+   recognised by a known company's name ("Akamai International B.V.").
+   Registration country alone misleads: Akamai registers networks in the
+   Netherlands and Cloudflare in London, but both are US companies. Unknown
+   networks fall back to the registration country, and the verdict says so.
 4. **Region:** addresses are matched against the IP ranges AWS and Google
    Cloud publish, so "AWS" becomes "AWS eu-north-1 (Stockholm)".
 5. **Verdict:**
@@ -105,7 +106,8 @@ curl "http://localhost:8000/api/board"
 `/api/lookup` takes a domain, a URL or an IP address. It returns the verdict,
 the CNAME chain, the platforms recognised in it and one entry per address with
 owner, ASN, country and region. Results are cached for five minutes, RIPEstat
-answers for hours.
+answers for hours. Every lookup goes on the public board unless you add
+`board=false`; the page has a checkbox for it next to the search box.
 
 `/api/board` returns the latest verdict per domain checked within the window,
 the count per verdict, and where the board is stored (`postgres` or

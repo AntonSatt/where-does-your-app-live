@@ -112,3 +112,7 @@ def test_api_records_lookups_on_the_board():
     assert body["storage"] == "memory"
     assert body["total"] == 1 and body["counts"] == {"european": 1}
     assert body["entries"][0]["domain"] == "hetzner.com"
+
+    # board=false answers as usual but keeps the domain off the public board.
+    assert client.get("/api/lookup", params={"domain": "intranet.example.com", "board": "false"}).status_code == 200
+    assert [e["domain"] for e in client.get("/api/board").json()["entries"]] == ["hetzner.com"]

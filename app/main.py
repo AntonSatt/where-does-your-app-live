@@ -64,7 +64,10 @@ def _error(status: int, message: str) -> JSONResponse:
 
 
 @app.get("/api/lookup")
-async def lookup(domain: str = Query(..., max_length=2048, description="Domain, URL or IP address")):
+async def lookup(
+    domain: str = Query(..., max_length=2048, description="Domain, URL or IP address"),
+    board: bool = Query(True, description="Put the domain on the public board. false keeps it off."),
+):
     try:
         result = await asyncio.wait_for(app.state.lookup.run(domain), REQUEST_TIMEOUT)
     except InputError as e:
@@ -78,7 +81,7 @@ async def lookup(domain: str = Query(..., max_length=2048, description="Domain, 
     except TimeoutError:
         return _error(504, "That took too long. Try again in a moment.")
 
-    entry = entry_from_result(result)
+    entry = entry_from_result(result) if board else None
     if entry:
         try:
             await app.state.board.record(entry)

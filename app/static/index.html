@@ -103,7 +103,11 @@
   .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .go:disabled { cursor: progress; opacity: 0.7; }
   .hint { margin: 0.75rem 0 0; color: var(--muted); text-wrap: pretty; }
-  .try { margin: 0.5rem 0 0; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; }
+  .share { margin: 0.5rem 0 0; color: var(--muted); text-wrap: pretty; }
+  .share label { color: var(--ink); cursor: pointer; }
+  .share input { accent-color: var(--accent); inline-size: 1.05em; block-size: 1.05em; margin: 0 0.6ch 0 0; vertical-align: -0.15em; }
+  .share input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .try { margin: 0.75rem 0 0; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; }
   .try a { color: var(--ink); }
   .error { margin: 1rem 0 0; color: var(--us); font-weight: 700; }
 
@@ -231,6 +235,9 @@
       <button class="go" id="go" type="submit">Look it up</button>
     </div>
     <p class="hint" id="hint">Type a domain or paste a URL, then press Enter.</p>
+    <p class="share"><label><input type="checkbox" id="share" checked>
+      Show it on the public board below.</label>
+      Untick for internal or private domains.</p>
     <p class="try"><span>Or try one:</span>
       <a href="/?d=spotify.com">spotify.com</a>
       <a href="/?d=svt.se">svt.se</a>
@@ -280,6 +287,12 @@
   const err = document.getElementById("err");
   const out = document.getElementById("out");
   const status = document.getElementById("status");
+  const share = document.getElementById("share");
+  // Remember the choice on this browser only.
+  try { if (localStorage.getItem("wdyal-share") === "off") share.checked = false; } catch {}
+  share.addEventListener("change", () => {
+    try { localStorage.setItem("wdyal-share", share.checked ? "on" : "off"); } catch {}
+  });
 
 
   const regions = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
@@ -445,7 +458,7 @@
     status.textContent = `Looking up ${domain}.`;
     if (push) history.pushState(null, "", `?d=${encodeURIComponent(domain)}`);
     try {
-      const res = await fetch(`/api/lookup?domain=${encodeURIComponent(domain)}`);
+      const res = await fetch(`/api/lookup?domain=${encodeURIComponent(domain)}&board=${share.checked}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `Something went wrong (${res.status}).`);
       render(body);

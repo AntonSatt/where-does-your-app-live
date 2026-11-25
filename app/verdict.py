@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .cloud import CloudMatch
-from .owners import CDN, CnameMatch, Org, zone
+from .owners import CDN, CnameMatch, Org, clean_holder, zone
 from .ripestat import Location
 
 EUROPEAN = "european"
@@ -38,7 +38,7 @@ class Host:
     def name(self) -> str:
         if self.owner:
             return self.owner.name
-        return self.network or (f"AS{self.asn}" if self.asn else "unknown network")
+        return clean_holder(self.network) or (f"AS{self.asn}" if self.asn else "unknown network")
 
     @property
     def front_door(self) -> bool:
