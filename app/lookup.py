@@ -21,7 +21,7 @@ import dns.resolver
 
 from .cache import MISSING, TTLCache
 from .cloud import CloudRanges
-from .owners import CnameMatch, clean_holder, match_cname, owner_for_asn, owner_for_holder, zone
+from .owners import CnameMatch, clean_holder, match_cname, owner_for_asn, owner_for_domain, owner_for_holder, zone
 from .ripestat import Location, RipeStat, UpstreamError
 from .verdict import Host, judge
 
@@ -86,15 +86,19 @@ class Resolver:
         self._resolver = dns.asyncresolver.Resolver()
         self._resolver.lifetime = 5.0
 
-    async def _query(self, name: str, rdtype: str) -> tuple[list[str], list[str]]:
-        try:
-            answer = await self._resolver.resolve(name, rdtype)
-        except dns.resolver.NXDOMAIN as e:
-            raise NotFound(name) from e
-        except dns.resolver.NoAnswer:
-            return [], []
-        except (dns.resolver.NoNameservers, dns.exception.Timeout) as e:
-            raise DnsError(name) from e
+    async def _query(self, name: str, rdtype: str, attempts: int = 2) -> tuple[list[str], list[str]]:
+        for attempt in range(1, attempts + 1):
+            try:
+                answer = await self._resolver.resolve(name, rdtype)
+                break
+            except dns.resolver.NXDOMAIN as e:
+                raise NotFound(name) from e
+            except dns.resolver.NoAnswer:
+                return [], []
+            except (dns.resolver.NoNameservers, dns.exception.Timeout) as e:
+                # A single lost answer is common; one more try usually gets through.
+                if attempt == attempts:
+                    raise DnsError(name) from e
         cnames = [
             str(rr.target).rstrip(".")
             for rrset in answer.response.answer
@@ -171,10 +175,16 @@ class Lookup:
         )
         owner = owner_for_asn(asn) if asn else None
         holder, registered = None, None
-        if asn:
+        if asn and owner:
             holder = await _soft(self._ripe.holder(asn), None)
-            # A network the table doesn't list may still carry a known company's name.
-            owner = owner or owner_for_holder(holder)
+        elif asn:
+            # A network the table doesn't list may still give its parent away,
+            # by its name or by the domain of its abuse address.
+            holder, abuse = await asyncio.gather(
+                _soft(self._ripe.holder(asn), None),
+                _soft(self._ripe.abuse_domain(asn), None),
+            )
+            owner = owner_for_holder(holder) or owner_for_domain(abuse)
             if not owner:
                 registered = await _soft(self._ripe.registered_country(asn), None)
         return Host(ip, asn, holder, owner, registered, location, cloud)

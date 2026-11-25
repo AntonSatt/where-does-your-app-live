@@ -60,6 +60,13 @@ _ORGS = [
     Org("meta", "Meta", "US", PLATFORM),
     Org("automattic", "Automattic (WordPress.com)", "US", PLATFORM),
     Org("squarespace", "Squarespace", "US", PLATFORM),
+    # Episerver, Swedish until 2018, now Optimizely, owned by Insight Partners (New York).
+    Org("optimizely", "Optimizely", "US", PLATFORM),
+    # Stockholm-based DDoS and web protection in front of sites, bought by Mastercard in 2023.
+    Org("baffin-bay", "Baffin Bay Networks (Mastercard)", "US", CDN),
+    Org("ibm", "IBM", "US", CLOUD),
+    Org("adobe", "Adobe", "US", PLATFORM),
+    Org("zscaler", "Zscaler", "US", CDN),
     # Elsewhere outside Europe
     Org("shopify", "Shopify", "CA", PLATFORM),
     Org("wix", "Wix", "IL", PLATFORM),
@@ -107,6 +114,8 @@ ASN_OWNERS: dict[int, str] = {
     32934: "meta",
     2635: "automattic",
     53831: "squarespace",
+    30811: "optimizely",
+    42649: "baffin-bay",
     62679: "shopify",
     58182: "wix",
     24940: "hetzner",
@@ -209,6 +218,9 @@ HOLDER_NAMES: list[tuple[re.Pattern[str], str]] = [
         (r"\boracle\b", "oracle"),
         (r"\bdigitalocean\b", "digitalocean"),
         (r"\b(facebook|meta platforms)\b", "meta"),
+        (r"\b(optimizely|episerver)\b", "optimizely"),
+        (r"\bbaffin bay networks\b", "baffin-bay"),
+        (r"\bzscaler\b", "zscaler"),
         (r"\bhetzner\b", "hetzner"),
         (r"\bovh", "ovh"),
         (r"\bscaleway\b", "scaleway"),
@@ -216,6 +228,75 @@ HOLDER_NAMES: list[tuple[re.Pattern[str], str]] = [
         (r"\bleaseweb\b", "leaseweb"),
     ]
 ]
+
+
+# The domain of a network's abuse address, which usually belongs to the
+# parent company even when the network carries a subsidiary's name.
+ORG_DOMAINS: dict[str, str] = {
+    "akamai.com": "akamai",
+    "linode.com": "akamai-cloud",
+    "cloudflare.com": "cloudflare",
+    "fastly.com": "fastly",
+    "aws.com": "aws",
+    "amazon.com": "aws",
+    "amazonaws.com": "aws",
+    "microsoft.com": "azure",
+    "azure.com": "azure",
+    "google.com": "google",
+    "oracle.com": "oracle",
+    "digitalocean.com": "digitalocean",
+    "vultr.com": "vultr",
+    "github.com": "github",
+    "fly.io": "fly",
+    "vercel.com": "vercel",
+    "netlify.com": "netlify",
+    "salesforce.com": "heroku",
+    "fb.com": "meta",
+    "meta.com": "meta",
+    "facebook.com": "meta",
+    "automattic.com": "automattic",
+    "squarespace.com": "squarespace",
+    "optimizely.com": "optimizely",
+    "episerver.com": "optimizely",
+    "baffinbaynetworks.com": "baffin-bay",
+    "mastercard.com": "baffin-bay",
+    "ibm.com": "ibm",
+    "softlayer.com": "ibm",
+    "adobe.com": "adobe",
+    "zscaler.com": "zscaler",
+    "shopify.com": "shopify",
+    "wix.com": "wix",
+    "hetzner.com": "hetzner",
+    "hetzner.de": "hetzner",
+    "ovh.net": "ovh",
+    "ovh.com": "ovh",
+    "ovhcloud.com": "ovh",
+    "scaleway.com": "scaleway",
+    "upcloud.com": "upcloud",
+    "ionos.com": "ionos",
+    "ionos.de": "ionos",
+    "contabo.com": "contabo",
+    "contabo.de": "contabo",
+    "leaseweb.com": "leaseweb",
+    "hostinger.com": "hostinger",
+    "one.com": "one-com",
+    "bunny.net": "bunny",
+    "glesys.se": "glesys",
+    "glesys.com": "glesys",
+    "bahnhof.net": "bahnhof",
+    "bahnhof.se": "bahnhof",
+    "telia.com": "telia",
+    "teliacompany.com": "telia",
+    "arelion.com": "arelion",
+    "twelve99.net": "arelion",
+    "exoscale.com": "exoscale",
+    "infomaniak.com": "infomaniak",
+}
+
+
+def owner_for_domain(domain: str | None) -> Org | None:
+    key = ORG_DOMAINS.get(domain or "")
+    return ORGS[key] if key else None
 
 
 def owner_for_holder(holder: str | None) -> Org | None:

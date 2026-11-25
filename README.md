@@ -23,7 +23,9 @@ deployment and will be taken down in December 2026.
    announces it, who holds that network and where it is registered.
 3. **Parent company:** a curated table maps the networks that matter to the
    company behind them, and a network the table doesn't list is still
-   recognised by a known company's name ("Akamai International B.V.").
+   recognised by a known company's name ("Akamai International B.V.") or
+   by the domain of its abuse address, which usually belongs to the parent
+   company even when the network has a subsidiary's name.
    Registration country alone misleads: Akamai registers networks in the
    Netherlands and Cloudflare in London, but both are US companies. Unknown
    networks fall back to the registration country, and the verdict says so.

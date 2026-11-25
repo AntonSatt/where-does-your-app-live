@@ -22,6 +22,16 @@ class UpstreamError(Exception):
     """RIPEstat did not answer in a usable way."""
 
 
+def registrable_domain(host: str) -> str | None:
+    """support.aws.com -> aws.com, abuse.example.co.uk -> example.co.uk."""
+    labels = [x for x in host.strip().strip(".").lower().split(".") if x]
+    if len(labels) < 2:
+        return None
+    if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in {"co", "com", "net", "org", "ac", "gov", "or", "ne"}:
+        return ".".join(labels[-3:])
+    return ".".join(labels[-2:])
+
+
 @dataclass(frozen=True)
 class Location:
     country: str | None
@@ -70,6 +80,18 @@ class RipeStat:
     async def holder(self, asn: int) -> str | None:
         data = await self._call("as-overview", f"AS{asn}", ttl=6 * 3600)
         return data.get("holder")
+
+    async def abuse_domain(self, asn: int) -> str | None:
+        """The domain of the network's abuse address, e.g. "akamai.com".
+
+        Subsidiaries register networks under local names, but the abuse
+        mailbox usually sits at the parent company's domain.
+        """
+        data = await self._call("abuse-contact-finder", f"AS{asn}", ttl=6 * 3600)
+        for address in data.get("abuse_contacts") or []:
+            if "@" in address:
+                return registrable_domain(address.rsplit("@", 1)[1])
+        return None
 
     async def registered_country(self, asn: int) -> str | None:
         data = await self._call("rir-stats-country", f"AS{asn}", ttl=6 * 3600)

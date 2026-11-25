@@ -1,11 +1,13 @@
 """Offline tests: input handling, owner mapping, cloud ranges and verdicts."""
 
+import asyncio
+
 import pytest
 
 from app.cloud import CloudMatch, best_match, parse_aws, parse_gcp
 from app.lookup import InputError, normalize
-from app.owners import ORGS, clean_holder, match_cname, owner_for_asn, owner_for_holder, zone
-from app.ripestat import Location
+from app.owners import ORGS, clean_holder, match_cname, owner_for_asn, owner_for_domain, owner_for_holder, zone
+from app.ripestat import Location, registrable_domain
 from app.verdict import Host, judge
 
 NOWHERE = Location(None, None)
@@ -53,6 +55,86 @@ def test_known_company_by_network_name():
     assert owner_for_holder("Amazonas Telecom") is None  # a Brazilian state, not Amazon
     assert owner_for_holder("Swedish_Tax_Agency Swedish Tax Agency") is None
     assert owner_for_holder(None) is None
+
+
+def test_parent_company_by_abuse_domain():
+    assert registrable_domain("support.aws.com") == "aws.com"
+    assert registrable_domain("abuse.example.co.uk") == "example.co.uk"
+    assert registrable_domain("localhost") is None
+    assert owner_for_domain("akamai.com").key == "akamai"
+    assert owner_for_domain("episerver.com").country == "US"  # Optimizely, postnord.se
+    assert owner_for_domain("baffinbaynetworks.com").kind == "cdn"  # Mastercard since 2023
+    assert owner_for_domain("loopia.se") is None
+    assert owner_for_domain(None) is None
+
+
+class FakeRipe:
+    """A network missing from the ASN table, with a subsidiary's name and the parent's abuse address."""
+
+    def __init__(self, holder, abuse, registered="SE"):
+        self.holder_name, self.abuse, self.registered = holder, abuse, registered
+
+    async def asn_for_ip(self, ip):
+        return 64512
+
+    async def location(self, ip):
+        return NOWHERE
+
+    async def holder(self, asn):
+        return self.holder_name
+
+    async def abuse_domain(self, asn):
+        return self.abuse
+
+    async def registered_country(self, asn):
+        return self.registered
+
+
+class NoCloud:
+    async def lookup(self, ip):
+        return None
+
+
+@pytest.mark.parametrize(
+    ("holder", "abuse", "owner", "country"),
+    [
+        ("XYZ-AS Some Local Name AB", "akamai.com", "Akamai", "US"),  # caught by the abuse address
+        ("AKAMAI-XX Akamai International B.V.", None, "Akamai", "US"),  # caught by the name
+        ("LOOPIA Loopia AB", "loopia.se", "Loopia AB", "SE"),  # unknown: registration country
+    ],
+)
+def test_host_finds_the_parent_company(holder, abuse, owner, country):
+    from app.cache import TTLCache
+    from app.lookup import Lookup
+
+    lookup = Lookup(FakeRipe(holder, abuse), NoCloud(), TTLCache())
+    host = asyncio.run(lookup._host("192.0.2.1"))
+    assert (host.name, host.country) == (owner, country)
+
+
+def test_dns_retries_one_lost_answer():
+    import dns.exception
+    import dns.resolver
+
+    from app.lookup import DnsError, Resolver
+
+    class Flaky:
+        def __init__(self, fails):
+            self.fails, self.calls = fails, 0
+
+        async def resolve(self, name, rdtype):
+            self.calls += 1
+            if self.calls <= self.fails:
+                raise dns.exception.Timeout()
+            raise dns.resolver.NoAnswer()
+
+    once = Resolver()
+    once._resolver = Flaky(1)
+    assert asyncio.run(once._query("example.com", "A")) == ([], [])
+    twice = Resolver()
+    twice._resolver = Flaky(2)
+    with pytest.raises(DnsError):
+        asyncio.run(twice._query("example.com", "A"))
 
 
 def test_akamai_subsidiary_is_a_us_front_door():
